@@ -39,6 +39,7 @@ namespace VideoAudioMediaPlayer
         private bool supressUpdates = false;
         double[] peakSeconds;
         string lastFile;
+        bool initialPlay = false;
 
         public Form1()
         {
@@ -100,38 +101,61 @@ namespace VideoAudioMediaPlayer
                 return;
             }
 
+            if (!initialPlay)
+                return;
+
             Trace.WriteLine("Playing");
 
             // allow mouse clicks - need to disable event handling
             _mediaPlayer.EnableMouseInput = false;
             _mediaPlayer.EnableKeyInput = false;
+
+            // update peaks
+            UpdateWaveFormWithPeaks(peakSeconds);
+
+            // indicate playing already fired
+            initialPlay = false;
         }
 
         private void _mediaPlayer_TimeChanged(object? sender, MediaPlayerTimeChangedEventArgs e)
         {
-            if (InvokeRequired)
+            try // try catch due to VLC dispose issues
             {
-                this.Invoke((MethodInvoker)delegate
+                if (InvokeRequired)
                 {
-                    _mediaPlayer_TimeChanged(sender, e);
-                });
-                return;
+                    this.Invoke((MethodInvoker)delegate
+                    {
+                        _mediaPlayer_TimeChanged(sender, e);
+                    });
+                    return;
+                }
+
+                //Trace.WriteLine("_mediaPlayer_TimeChanged start");
+
+                if (supressUpdates)
+                    return;
+
+                lblInfo.Text = string.Format("{0} - {1} of {2}", displayFileName, ToMins(e.Time / 1000), ToMins(_mediaPlayer.Length / 1000));
+
+                DrawWaveformWithPosition(e.Time);
+                //Trace.WriteLine("_mediaPlayer_TimeChanged end");
             }
-
-            Trace.WriteLine("_mediaPlayer_TimeChanged start");
-
-            if (supressUpdates)
-                return;
-
-            lblInfo.Text = string.Format("{0} - {1} of {2}", displayFileName, ToMins(e.Time / 1000), ToMins(_mediaPlayer.Length / 1000));
-
-            DrawWaveformWithPosition(e.Time);
-            Trace.WriteLine("_mediaPlayer_TimeChanged end");
+            catch
+            { }
         }
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
+            Trace.WriteLine("FormClosing");
             SavePosition();
+
+            //mainVideoView.MediaPlayer = null;
+            //_mediaPlayer.Dispose();
+            //_mediaPlayer = null;
+            //_libVLC.Dispose();
+            //_libVLC = null;
+
+            Trace.WriteLine("FormClosing end");
         }
 
         private void Form1_FormClosed(object sender, FormClosedEventArgs e)
@@ -189,9 +213,18 @@ namespace VideoAudioMediaPlayer
             waveformPictureBox.Image = tempImage;
         }
 
-        private void UpdateWaveFormWithPeaks(string waveFormFileName, double[] peaks)
+        private void UpdateWaveFormWithPeaks(double[] peaks)
         {
             // to complete
+            using (Graphics g = Graphics.FromImage(waveformImage))
+            {
+                foreach (var peak in peaks)
+                {
+                    double positionRatio = (double)((double)(peak * 1000) / (double)_mediaPlayer.Length);
+                    int x = (int)(positionRatio * waveformImage.Width);
+                    g.DrawRectangle(Pens.Blue, x-1, 0, 3, waveformImage.Height);
+                }
+            }
         }
 
         private void WaveformPictureBox_MouseClick(object? sender, MouseEventArgs e)
@@ -250,6 +283,8 @@ namespace VideoAudioMediaPlayer
                 return;
             }
 
+            initialPlay = true;
+
             if (_mediaPlayer.IsPlaying)
                 _mediaPlayer.Pause();
 
@@ -265,7 +300,6 @@ namespace VideoAudioMediaPlayer
 
             peakSeconds = AnalyzeFilePeaks(file);
             LoadPeaks(peakSeconds);
-            UpdateWaveFormWithPeaks(waveFormFileName, peakSeconds);
 
             // play video
             _mediaPlayer.Play(new Media(_libVLC, file, FromType.FromPath));
@@ -351,7 +385,7 @@ namespace VideoAudioMediaPlayer
             .Select((value, index) => new { Value = value, Index = index })
             .Where(x => x.Index > 0 && (x.Value - normalizedLevels[x.Index - 1]) > 0.3)
             .Select(x => (x.Index * 0.25))
-            .ToArray();
+            .ToArray().Compress(2);
         }
 
         private void LoadPeaks(double[] peakList)
@@ -365,12 +399,12 @@ namespace VideoAudioMediaPlayer
 
         private void Ffmpeg_ErrorDataReceived(object sender, DataReceivedEventArgs e)
         {
-            File.AppendAllText(Path.Combine(Application.StartupPath, "out.txt"), e.Data + "\n");
+            //File.AppendAllText(Path.Combine(Application.StartupPath, "out.txt"), e.Data + "\n");
         }
 
         private void Ffmpeg_OutputDataReceived(object sender, DataReceivedEventArgs e)
         {
-            File.AppendAllText(Path.Combine(Application.StartupPath, "error.txt"), e.Data + "\n");
+            //File.AppendAllText(Path.Combine(Application.StartupPath, "error.txt"), e.Data + "\n");
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -393,7 +427,7 @@ namespace VideoAudioMediaPlayer
                 // debug
                 else
                     //PlayFile("C:\\Users\\JosephLevy\\Videos\\04M22S_1710605062.mp4");
-                    PlayFile("C:\\Users\\JosephLevy\\Videos\\2024072816\\58M09S_1722175089.mp4");
+                    PlayFile("C:\\Users\\JosephLevy\\Videos\\2024072817\\21M09S_1722176469.mp4");
             }
             else
             {
@@ -647,5 +681,29 @@ namespace VideoAudioMediaPlayer
         /// </summary>
         [XmlElement("CommandLineArguments")]
         public List<string> CommandLineArguments { get; set; } = new List<string>();
+    }
+
+    public static class StringArrayExtensions
+    {
+        public static double[] Compress(this double[] source, int distance)
+        {
+            if (source == null || source.Length == 0)
+                return new double[0];
+
+            List<double> result = new List<double>();
+            double? lastAdded = null;
+
+            foreach (var number in source)
+            {
+                // assuming increasing numbers only
+                if (lastAdded == null || (number - lastAdded.Value >= distance))
+                {
+                    result.Add(number);
+                    lastAdded = number;
+                }
+            }
+
+            return result.ToArray();
+        }
     }
 }
