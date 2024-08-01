@@ -9,6 +9,7 @@ using System.Reflection.Metadata.Ecma335;
 using System.Runtime.InteropServices;
 using System.Xml.Serialization;
 using VideoAudioMediaPlayer.Properties;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskbarClock;
 
 namespace VideoAudioMediaPlayer
 {
@@ -18,7 +19,7 @@ namespace VideoAudioMediaPlayer
         private static extern bool SetForegroundWindow(IntPtr hWnd);
 
         private string displayFileName;
-        private Bitmap waveformImage;
+        private Bitmap waveformImage = null;
         private string waveFormFileName;
 
         private LibVLC _libVLC;
@@ -36,10 +37,19 @@ namespace VideoAudioMediaPlayer
         private NamedPipeServerStream _namedPipeServerStream;
         private NamedPipeXmlPayload _namedPipeXmlPayload;
 
-        private bool supressUpdates = false;
         double[] peakSeconds;
         string lastFile;
         bool initialPlay = false;
+        int keyEventCounter = 0;
+        long targetSeekTime = 0;
+        int targetSeekDirection = 1;
+        bool nextCheckStep = false;
+        long seekStep = 8 * 1000;
+        long seekFromTime;
+        int peakSamplesPerSecond = 4;
+        long maxAudioPos = 0;
+        long minAudioPos = long.MaxValue;
+        long maxAudioLength = long.MaxValue;
 
         public Form1()
         {
@@ -110,6 +120,8 @@ namespace VideoAudioMediaPlayer
             _mediaPlayer.EnableMouseInput = false;
             _mediaPlayer.EnableKeyInput = false;
 
+            maxAudioLength = _mediaPlayer.Length;
+
             // update peaks
             UpdateWaveFormWithPeaks(peakSeconds);
 
@@ -117,43 +129,10 @@ namespace VideoAudioMediaPlayer
             initialPlay = false;
         }
 
-        private void _mediaPlayer_TimeChanged(object? sender, MediaPlayerTimeChangedEventArgs e)
-        {
-            try // try catch due to VLC dispose issues
-            {
-                if (InvokeRequired)
-                {
-                    this.Invoke((MethodInvoker)delegate
-                    {
-                        _mediaPlayer_TimeChanged(sender, e);
-                    });
-                    return;
-                }
-
-                //Trace.WriteLine("_mediaPlayer_TimeChanged start");
-
-                if (supressUpdates)
-                    return;
-
-                lblInfo.Text = string.Format("{0} - {1} of {2}", displayFileName, ToMins(e.Time / 1000), ToMins(_mediaPlayer.Length / 1000));
-
-                DrawWaveformWithPosition(e.Time);
-                //Trace.WriteLine("_mediaPlayer_TimeChanged end");
-            }
-            catch
-            { }
-        }
-
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
             Trace.WriteLine("FormClosing");
             SavePosition();
-
-            //mainVideoView.MediaPlayer = null;
-            //_mediaPlayer.Dispose();
-            //_mediaPlayer = null;
-            //_libVLC.Dispose();
-            //_libVLC = null;
 
             Trace.WriteLine("FormClosing end");
         }
@@ -197,6 +176,7 @@ namespace VideoAudioMediaPlayer
             if (waveformImage == null)
                 return;
 
+            Debug.WriteLine($"Drawing at {mediaTime}");
             // Create a new bitmap to draw on
             Bitmap tempImage = new Bitmap(waveformPictureBox.Width, waveformPictureBox.Height);
             using (Graphics g = Graphics.FromImage(tempImage))
@@ -220,9 +200,9 @@ namespace VideoAudioMediaPlayer
             {
                 foreach (var peak in peaks)
                 {
-                    double positionRatio = (double)((double)(peak * 1000) / (double)_mediaPlayer.Length);
+                    double positionRatio = (double)((double)(peak) / (double)_mediaPlayer.Length);
                     int x = (int)(positionRatio * waveformImage.Width);
-                    g.DrawRectangle(Pens.Blue, x-1, 0, 3, waveformImage.Height);
+                    g.DrawRectangle(Pens.Blue, x, (int)(waveformImage.Height * 0.3), 1, (int)(waveformImage.Height * 0.4));
                 }
             }
         }
@@ -299,7 +279,6 @@ namespace VideoAudioMediaPlayer
             LoadWaveform();
 
             peakSeconds = AnalyzeFilePeaks(file);
-            LoadPeaks(peakSeconds);
 
             // play video
             _mediaPlayer.Play(new Media(_libVLC, file, FromType.FromPath));
@@ -357,7 +336,7 @@ namespace VideoAudioMediaPlayer
             ffprobe.StartInfo.FileName = Path.Combine(Application.StartupPath, "ffmpeg\\ffprobe");
             string outputFileName = Path.Combine(Application.StartupPath, "peaks.txt");
             // 16000 or 8000
-            ffprobe.StartInfo.Arguments = $"-f lavfi -i \"amovie={inputFilePath.Replace("\\", "/\\").Replace(":", "\\\\:")},asetnsamples=n=4000,astats=metadata=1:reset=1\" -show_entries frame=pkt_pts_time:frame_tags=lavfi.astats.Overall.RMS_level -of csv=p=0 -o {outputFileName}";
+            ffprobe.StartInfo.Arguments = $"-f lavfi -i \"amovie={inputFilePath.Replace("\\", "/\\").Replace(":", "\\\\:")},asetnsamples=n={(int)(16000/peakSamplesPerSecond)},astats=metadata=1:reset=1\" -show_entries frame=pkt_pts_time:frame_tags=lavfi.astats.Overall.RMS_level -of csv=p=0 -o {outputFileName}";
             //ffprobe -f lavfi -i "amovie=04M22S_1710605062.mp4,asetnsamples=n=16000,astats=metadata=1:reset=1" -show_entries frame=pkt_pts_time:frame_tags=lavfi.astats.Overall.RMS_level -of csv=p=0 >out.txt
             //        -f lavfi - i "amovie=C:\Users\JosephLevy\Videos\04M22S_1710605062.mp4,asetnsamples=n=16000,astats=metadata=1:reset=1" - show_entries frame = pkt_pts_time:frame_tags = lavfi.astats.Overall.RMS_level - of csv = p = 0 - o peaks.txt
             ffprobe.StartInfo.UseShellExecute = false;
@@ -381,20 +360,13 @@ namespace VideoAudioMediaPlayer
 
             double[] normalizedLevels = levels.Select(x => (x - minVal) / (maxVal - minVal)).ToArray();
 
+            double notedChange = 0.25; // (amplitude change of total)
+            int compressionDistance = 400; // ms of changes in proximity to combine/compress
             return normalizedLevels
             .Select((value, index) => new { Value = value, Index = index })
-            .Where(x => x.Index > 0 && (x.Value - normalizedLevels[x.Index - 1]) > 0.3)
-            .Select(x => (x.Index * 0.25))
-            .ToArray().Compress(2);
-        }
-
-        private void LoadPeaks(double[] peakList)
-        {
-            this.Invoke((MethodInvoker)delegate
-            {
-                lstPeaks.Items.Clear();
-                lstPeaks.Items.AddRange(peakList.Select(i => i.ToString()).ToArray());
-            });
+            .Where(x => x.Index > 0 && (x.Value - normalizedLevels[x.Index - 1]) > notedChange)
+            .Select(x => (x.Index * 1000 * (1/(double)peakSamplesPerSecond))) // convert index to time in ms
+            .ToArray().Compress(compressionDistance);
         }
 
         private void Ffmpeg_ErrorDataReceived(object sender, DataReceivedEventArgs e)
@@ -451,9 +423,66 @@ namespace VideoAudioMediaPlayer
                 e.IsInputKey = true;  // this will trigger the KeyDown event
         }
 
+        private void _mediaPlayer_TimeChanged(object? sender, MediaPlayerTimeChangedEventArgs e)
+        {
+            try // try catch due to VLC dispose issues
+            {
+                if (InvokeRequired)
+                {
+                    this.Invoke((MethodInvoker)delegate
+                    {
+                        _mediaPlayer_TimeChanged(sender, e);
+                    });
+                    return;
+                }
+
+                Debug.WriteLine($"Attempt to move to {e.Time}");
+
+                // right
+                // if loop finished - reset max
+                if (Math.Abs(maxAudioPos - maxAudioLength) < 200 || e.Time == 0)
+                    maxAudioPos = 0;
+
+                // if moving forward - make sure we don't move backwards
+                if (targetSeekDirection > 0 && e.Time < maxAudioPos)
+                    return;
+
+                // save max visited time
+                if (maxAudioPos < e.Time)
+                    maxAudioPos = e.Time;
+
+                // if gone left - track minimum
+                if (targetSeekDirection < 0)
+                {
+                    if(e.Time < minAudioPos)
+                        minAudioPos = e.Time;
+                }
+
+                // left - if moved too far off the minimum - not good - ignore
+                if (targetSeekDirection < 0 && e.Time > minAudioPos + (((seekFromTime - targetSeekTime) / 2)))
+                    return;
+
+                // if moved further than min but not too much - stand down and don't validate any more
+                if(targetSeekDirection < 0  && (e.Time > minAudioPos + ((seekFromTime - targetSeekTime) / 4)))
+                {
+                    targetSeekDirection = 0;
+                    minAudioPos = long.MaxValue;
+                    maxAudioPos = 0;
+                }
+
+                // all is well
+                // update and draw
+
+                lblInfo.Text = string.Format("{0} - {1} of {2}", displayFileName, ToMins(e.Time / 1000), ToMins(_mediaPlayer.Length / 1000));
+
+                DrawWaveformWithPosition(e.Time);
+            }
+            catch
+            { }
+        }
+
         private void Form1_KeyDown(object sender, KeyEventArgs e)
         {
-            long seekStep = 8 * 1000;
             long mediaTime = _mediaPlayer.Time;
 
             switch (e.KeyCode)
@@ -463,27 +492,78 @@ namespace VideoAudioMediaPlayer
                     break;
 
                 case Keys.Right:
-                    if (mediaTime < _mediaPlayer.Length - seekStep)
+                    if (!e.Shift)
                     {
-                        supressUpdates = true;
-                        ThreadPool.QueueUserWorkItem(_ => { _mediaPlayer.SeekTo(TimeSpan.FromMilliseconds(mediaTime + seekStep)); });
-                        while (_mediaPlayer.Time < mediaTime + seekStep)
-                            Thread.Sleep(10);
-                        supressUpdates = false;
+                        if (mediaTime < _mediaPlayer.Length - seekStep)
+                        {
+                            long targetTime = mediaTime + seekStep;
+                            targetSeekDirection = 0;
+                            targetSeekTime = targetTime;
+                            targetSeekDirection = 1;
+                            seekFromTime = mediaTime;
+
+                            ThreadPool.QueueUserWorkItem(_ => { _mediaPlayer.SeekTo(TimeSpan.FromMilliseconds(targetTime)); });
+                        }
+                    }
+                    else
+                    {
+                        // seek to next peak
+                        double? time = GetNextPeak(mediaTime);
+                        if (time != null)
+                        {
+                            targetSeekDirection = 0;
+                            targetSeekTime = (long)time.Value;
+                            targetSeekDirection = 1;
+                            seekFromTime = mediaTime;
+
+                            ThreadPool.QueueUserWorkItem(_ => { _mediaPlayer.SeekTo(TimeSpan.FromMilliseconds(time.Value)); });
+                        }
                     }
                     break;
 
                 case Keys.Left:
-                    if (mediaTime > seekStep)
+                    if (!e.Shift)
                     {
-                        supressUpdates = true;
-                        ThreadPool.QueueUserWorkItem(_ => { _mediaPlayer.SeekTo(TimeSpan.FromMilliseconds(mediaTime - seekStep)); });
-                        while (_mediaPlayer.Time >= mediaTime)
-                            Thread.Sleep(10);
-                        supressUpdates = false;
+                        if (mediaTime > seekStep)
+                        {
+                            long targetTime = mediaTime - seekStep;
+                            targetSeekDirection = 0;
+                            targetSeekTime = targetTime;
+                            targetSeekDirection = -1;
+                            seekFromTime = mediaTime;
+
+                            ThreadPool.QueueUserWorkItem(_ => { _mediaPlayer.SeekTo(TimeSpan.FromMilliseconds(targetTime)); });
+                        }
+                    }
+                    else
+                    {
+                        // seek to previous peak
+                        double? time = GetPreviousPeak(mediaTime);
+                        if (time != null)
+                        {
+                            targetSeekDirection = 0;
+                            targetSeekTime = (long)time.Value;
+                            targetSeekDirection = -1;
+                            seekFromTime = mediaTime;
+
+                            ThreadPool.QueueUserWorkItem(_ => { _mediaPlayer.SeekTo(TimeSpan.FromMilliseconds(time.Value)); });
+                        }
                     }
                     break;
             }
+        }
+
+        private double? GetPreviousPeak(double mediaTime)
+        {
+            return peakSeconds.Select((value, index) => new { value, index })
+            .FirstOrDefault(x => x.value >= mediaTime)?.index is int index && index > 0
+            ? peakSeconds[index - 1]
+            : (double?)null;
+        }
+
+        private double? GetNextPeak(double mediaTime)
+        {
+            return peakSeconds.FirstOrDefault(n => n > mediaTime);
         }
 
         private void PlayPause()

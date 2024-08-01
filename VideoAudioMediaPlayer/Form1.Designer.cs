@@ -43,7 +43,6 @@ namespace VideoAudioMediaPlayer
             playbackTimer = new System.Windows.Forms.Timer(components);
             waveformPictureBox = new PictureBox();
             lblInfo = new Label();
-            lstPeaks = new ListBox();
             mainVideoView = new LibVLCSharp.WinForms.VideoView();
             menuStrip1 = new MenuStrip();
             louderToolStripMenuItem = new ToolStripMenuItem();
@@ -69,29 +68,21 @@ namespace VideoAudioMediaPlayer
             lblInfo.Dock = DockStyle.Top;
             lblInfo.Font = new Font("Arial", 13.875F, FontStyle.Bold, GraphicsUnit.Point, 0);
             lblInfo.ForeColor = SystemColors.ButtonFace;
-            lblInfo.Location = new Point(0, 42);
+            lblInfo.Location = new Point(0, 40);
             lblInfo.Name = "lblInfo";
             lblInfo.Size = new Size(1662, 59);
             lblInfo.TabIndex = 2;
             lblInfo.TextAlign = ContentAlignment.MiddleCenter;
             lblInfo.PreviewKeyDown += Generic_PreviewKeyDown;
             // 
-            // lstPeaks
-            // 
-            lstPeaks.Dock = DockStyle.Right;
-            lstPeaks.Location = new Point(1487, 101);
-            lstPeaks.Name = "lstPeaks";
-            lstPeaks.Size = new Size(175, 629);
-            lstPeaks.TabIndex = 3;
-            // 
             // mainVideoView
             // 
             mainVideoView.BackColor = Color.Black;
             mainVideoView.Dock = DockStyle.Fill;
-            mainVideoView.Location = new Point(0, 101);
+            mainVideoView.Location = new Point(0, 99);
             mainVideoView.MediaPlayer = null;
             mainVideoView.Name = "mainVideoView";
-            mainVideoView.Size = new Size(1487, 629);
+            mainVideoView.Size = new Size(1662, 631);
             mainVideoView.TabIndex = 4;
             mainVideoView.Click += mainVideoView_Click;
             mainVideoView.PreviewKeyDown += Generic_PreviewKeyDown;
@@ -102,14 +93,14 @@ namespace VideoAudioMediaPlayer
             menuStrip1.Items.AddRange(new ToolStripItem[] { louderToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
-            menuStrip1.Size = new Size(1662, 42);
+            menuStrip1.Size = new Size(1662, 40);
             menuStrip1.TabIndex = 5;
             menuStrip1.Text = "menuStrip1";
             // 
             // louderToolStripMenuItem
             // 
             louderToolStripMenuItem.Name = "louderToolStripMenuItem";
-            louderToolStripMenuItem.Size = new Size(108, 38);
+            louderToolStripMenuItem.Size = new Size(108, 36);
             louderToolStripMenuItem.Text = "Louder";
             louderToolStripMenuItem.Click += louderToolStripMenuItem_Click;
             // 
@@ -122,7 +113,6 @@ namespace VideoAudioMediaPlayer
             BackgroundImageLayout = ImageLayout.Stretch;
             ClientSize = new Size(1662, 952);
             Controls.Add(mainVideoView);
-            Controls.Add(lstPeaks);
             Controls.Add(waveformPictureBox);
             Controls.Add(lblInfo);
             Controls.Add(menuStrip1);
@@ -149,7 +139,6 @@ namespace VideoAudioMediaPlayer
         private System.Windows.Forms.Timer playbackTimer;
         private PictureBox waveformPictureBox;
         private Label lblInfo;
-        private ListBox lstPeaks;
         private LibVLCSharp.WinForms.VideoView mainVideoView;
         private MenuStrip menuStrip1;
         private ToolStripMenuItem louderToolStripMenuItem;
