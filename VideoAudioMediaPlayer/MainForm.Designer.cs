@@ -2,7 +2,7 @@
 
 namespace VideoAudioMediaPlayer
 {
-    partial class Form1
+    partial class MainForm
     {
         /// <summary>
         ///  Required designer variable.
@@ -68,7 +68,7 @@ namespace VideoAudioMediaPlayer
             lblInfo.Dock = DockStyle.Top;
             lblInfo.Font = new Font("Arial", 13.875F, FontStyle.Bold, GraphicsUnit.Point, 0);
             lblInfo.ForeColor = SystemColors.ButtonFace;
-            lblInfo.Location = new Point(0, 40);
+            lblInfo.Location = new Point(0, 42);
             lblInfo.Name = "lblInfo";
             lblInfo.Size = new Size(1662, 59);
             lblInfo.TabIndex = 2;
@@ -79,10 +79,10 @@ namespace VideoAudioMediaPlayer
             // 
             mainVideoView.BackColor = Color.Black;
             mainVideoView.Dock = DockStyle.Fill;
-            mainVideoView.Location = new Point(0, 99);
+            mainVideoView.Location = new Point(0, 101);
             mainVideoView.MediaPlayer = null;
             mainVideoView.Name = "mainVideoView";
-            mainVideoView.Size = new Size(1662, 631);
+            mainVideoView.Size = new Size(1662, 629);
             mainVideoView.TabIndex = 4;
             mainVideoView.Click += mainVideoView_Click;
             mainVideoView.PreviewKeyDown += Generic_PreviewKeyDown;
@@ -93,18 +93,18 @@ namespace VideoAudioMediaPlayer
             menuStrip1.Items.AddRange(new ToolStripItem[] { louderToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
-            menuStrip1.Size = new Size(1662, 40);
+            menuStrip1.Size = new Size(1662, 42);
             menuStrip1.TabIndex = 5;
             menuStrip1.Text = "menuStrip1";
             // 
             // louderToolStripMenuItem
             // 
             louderToolStripMenuItem.Name = "louderToolStripMenuItem";
-            louderToolStripMenuItem.Size = new Size(108, 36);
+            louderToolStripMenuItem.Size = new Size(108, 38);
             louderToolStripMenuItem.Text = "Louder";
             louderToolStripMenuItem.Click += louderToolStripMenuItem_Click;
             // 
-            // Form1
+            // MainForm
             // 
             AllowDrop = true;
             AutoScaleDimensions = new SizeF(13F, 32F);
@@ -118,14 +118,14 @@ namespace VideoAudioMediaPlayer
             Controls.Add(menuStrip1);
             KeyPreview = true;
             MainMenuStrip = menuStrip1;
-            Name = "Form1";
+            Name = "MainForm";
             Text = "Video & Audio Playback";
-            FormClosing += Form1_FormClosing;
-            FormClosed += Form1_FormClosed;
-            Load += Form1_Load;
-            DragDrop += Form1_DragDrop;
-            DragEnter += Form1_DragEnter;
-            KeyDown += Form1_KeyDown;
+            FormClosing += MainForm_FormClosing;
+            FormClosed += MainForm_FormClosed;
+            Load += MainForm_Load;
+            DragDrop += MainForm_DragDrop;
+            DragEnter += MainForm_DragEnter;
+            KeyDown += MainForm_KeyDown;
             PreviewKeyDown += Generic_PreviewKeyDown;
             ((System.ComponentModel.ISupportInitialize)waveformPictureBox).EndInit();
             ((System.ComponentModel.ISupportInitialize)mainVideoView).EndInit();
