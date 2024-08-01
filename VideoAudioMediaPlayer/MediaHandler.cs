@@ -55,6 +55,18 @@ namespace VideoAudioMediaPlayer
         {
             _mediaPlayer.Pause();
         }
+        public void UnloadMedia()
+        {
+            if (_mediaPlayer.IsPlaying)
+                _mediaPlayer.Pause();
+
+            _mediaPlayer.Media = null;
+
+            maxAudioLength = 0;
+            maxAudioPos = 0;
+            minAudioPos = long.MaxValue;
+        }
+
 
         public void SeekForwardStep(long mediaTime)
         {

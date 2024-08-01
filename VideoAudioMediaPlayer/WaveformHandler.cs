@@ -67,7 +67,7 @@ namespace VideoAudioMediaPlayer
 
         public void UpdateWaveFormWithPeaks(double[] peaks, PictureBox pictureBox, long mediaLength)
         {
-            using (Graphics g = Graphics.FromImage(pictureBox.Image))
+            using (Graphics g = Graphics.FromImage(waveformImage))
             {
                 foreach (var peak in peaks)
                 {

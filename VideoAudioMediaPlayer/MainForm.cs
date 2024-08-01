@@ -136,16 +136,23 @@ namespace VideoAudioMediaPlayer
             }
 
             initialPlay = true;
+
+            _mediaHandler.UnloadMedia();
+
             lastFile = file;
             displayFileName = Path.GetFileName(file);
             lblInfo.Text = displayFileName;
-             
+
             _waveformHandler.GenerateWaveform(file, waveFormFileName, waveformPictureBox.Width, waveformPictureBox.Height);
             _waveformHandler.LoadWaveform(waveFormFileName, waveformPictureBox);
 
             peakSeconds = new PeakAnalyzer().AnalyzeFilePeaks(file);
 
+            // play new video
             _mediaHandler.Play(file);
+
+            this.TopMost = true;  // Bring the form to the front
+            this.TopMost = false; // Reset TopMost to default
             SetForegroundWindow(this.Handle);
             this.Activate();
             this.Focus();
