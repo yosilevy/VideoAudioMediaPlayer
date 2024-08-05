@@ -151,12 +151,8 @@ namespace VideoAudioMediaPlayer
             // play new video
             _mediaHandler.Play(file);
 
-            this.TopMost = true;  // Bring the form to the front
-            this.TopMost = false; // Reset TopMost to default
-            SetForegroundWindow(this.Handle);
-            this.Activate();
-            this.Focus();
-            SetForegroundWindow(this.Handle);
+            // bring to front and focus windows
+            WindowsInteropConnector.FocusAndForegroundForm(this);
         }
 
         private void OnMediaPlaying(object? sender, EventArgs e)
