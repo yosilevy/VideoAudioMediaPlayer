@@ -27,16 +27,23 @@ namespace VideoAudioMediaPlayer
             ffprobe.WaitForExit();
 
             double[] levels = File.ReadAllLines(outputFileName).Select(line => double.Parse(line)).ToArray();
-            double maxVal = levels.Max();
-            double minVal = levels.Min();
-            double[] normalizedLevels = levels.Select(x => (x - minVal) / (maxVal - minVal)).ToArray();
+            if(levels.Length > 0)
+            {
+                double maxVal = levels.Max();
+                double minVal = levels.Min();
+                double[] normalizedLevels = levels.Select(x => (x - minVal) / (maxVal - minVal)).ToArray();
 
-            return normalizedLevels
-                .Select((value, index) => new { Value = value, Index = index })
-                .Where(x => x.Index > 0 && (x.Value - normalizedLevels[x.Index - 1]) > 0.25)
-                .Select(x => (x.Index * 1000 * (1.0 / peakSamplesPerSecond))) // Convert index to time in ms
-                .ToArray()
-                .Compress(400);
+                return normalizedLevels
+                    .Select((value, index) => new { Value = value, Index = index })
+                    .Where(x => x.Index > 0 && (x.Value - normalizedLevels[x.Index - 1]) > 0.25)
+                    .Select(x => (x.Index * 1000 * (1.0 / peakSamplesPerSecond))) // Convert index to time in ms
+                    .ToArray()
+                    .Compress(400);
+            }
+            else
+            {
+                return new double[0];
+            }
         }
 
         private void Ffmpeg_ErrorDataReceived(object sender, DataReceivedEventArgs e)

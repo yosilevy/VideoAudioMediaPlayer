@@ -59,7 +59,7 @@ namespace VideoAudioMediaPlayer
                 g.DrawImage(waveformImage, new Rectangle(0, 0, pictureBox.Width, pictureBox.Height));
                 double positionRatio = (double)mediaTime / mediaLength;
                 int x = (int)(positionRatio * pictureBox.Width);
-                g.DrawLine(Pens.Red, x, 0, x, pictureBox.Height);
+                g.DrawLine(Pens.Green, x, 0, x, pictureBox.Height);
             }
 
             pictureBox.Image = tempImage;

@@ -54,9 +54,9 @@ namespace VideoAudioMediaPlayer
             // waveformPictureBox
             // 
             waveformPictureBox.Dock = DockStyle.Bottom;
-            waveformPictureBox.Location = new Point(0, 730);
+            waveformPictureBox.Location = new Point(0, 772);
             waveformPictureBox.Name = "waveformPictureBox";
-            waveformPictureBox.Size = new Size(1662, 222);
+            waveformPictureBox.Size = new Size(1662, 180);
             waveformPictureBox.TabIndex = 1;
             waveformPictureBox.TabStop = false;
             waveformPictureBox.MouseClick += WaveformPictureBox_MouseClick;
@@ -68,7 +68,7 @@ namespace VideoAudioMediaPlayer
             lblInfo.Dock = DockStyle.Top;
             lblInfo.Font = new Font("Arial", 13.875F, FontStyle.Bold, GraphicsUnit.Point, 0);
             lblInfo.ForeColor = SystemColors.ButtonFace;
-            lblInfo.Location = new Point(0, 42);
+            lblInfo.Location = new Point(0, 40);
             lblInfo.Name = "lblInfo";
             lblInfo.Size = new Size(1662, 59);
             lblInfo.TabIndex = 2;
@@ -79,10 +79,10 @@ namespace VideoAudioMediaPlayer
             // 
             mainVideoView.BackColor = Color.Black;
             mainVideoView.Dock = DockStyle.Fill;
-            mainVideoView.Location = new Point(0, 101);
+            mainVideoView.Location = new Point(0, 99);
             mainVideoView.MediaPlayer = null;
             mainVideoView.Name = "mainVideoView";
-            mainVideoView.Size = new Size(1662, 629);
+            mainVideoView.Size = new Size(1662, 673);
             mainVideoView.TabIndex = 4;
             mainVideoView.Click += mainVideoView_Click;
             mainVideoView.PreviewKeyDown += Generic_PreviewKeyDown;
@@ -93,14 +93,14 @@ namespace VideoAudioMediaPlayer
             menuStrip1.Items.AddRange(new ToolStripItem[] { louderToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
-            menuStrip1.Size = new Size(1662, 42);
+            menuStrip1.Size = new Size(1662, 40);
             menuStrip1.TabIndex = 5;
             menuStrip1.Text = "menuStrip1";
             // 
             // louderToolStripMenuItem
             // 
             louderToolStripMenuItem.Name = "louderToolStripMenuItem";
-            louderToolStripMenuItem.Size = new Size(108, 38);
+            louderToolStripMenuItem.Size = new Size(108, 36);
             louderToolStripMenuItem.Text = "Louder";
             louderToolStripMenuItem.Click += louderToolStripMenuItem_Click;
             // 

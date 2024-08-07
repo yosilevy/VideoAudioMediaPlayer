@@ -123,7 +123,7 @@ namespace VideoAudioMediaPlayer
             {
                 // Debug example file
                 // PlayFile("C:\\Users\\JosephLevy\\Videos\\04M22S_1710605062.mp4");
-                PlayFile("C:\\Users\\JosephLevy\\Videos\\2024072817\\21M09S_1722176469.mp4");
+                PlayFile("C:\\Users\\JosephLevy\\Videos\\04M22S_1710605062.mp4");
             }
         }
 
@@ -286,7 +286,7 @@ namespace VideoAudioMediaPlayer
             if (Settings.Default.WindowSize != null)
             {
                 this.Size = Settings.Default.WindowSize;
-                if (this.Size.Height == 0 || this.Size.Width == 0)
+                if (this.Size.Height < 400 || this.Size.Width < 400)
                     this.Size = new Size(800, 600);
             }
         }
