@@ -1,140 +1,194 @@
-﻿using LibVLCSharp.Shared;
-using LibVLCSharp.WinForms;
+﻿using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.WinForms;
 using System;
+using System.ComponentModel;
 using System.Threading;
+using static System.Runtime.CompilerServices.RuntimeHelpers;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskbarClock;
 
 namespace VideoAudioMediaPlayer
 {
     public class MediaHandler
     {
-        private LibVLC _libVLC;
-        private MediaPlayer _mediaPlayer;
-        private VideoView _videoView;
-        private long seekStep = 8 * 1000;
-        private long targetSeekTime;
+        WebView2 _videoView;
+
+        private double videoDuration = 0;
+        private double videoTime = 0;
+        private double seekStep = 8; // seconds
+        private double targetSeekTime;
         private int targetSeekDirection;
-        private long seekFromTime;
-        long maxAudioPos = 0;
-        long minAudioPos = long.MaxValue;
-        long maxAudioLength = long.MaxValue;
+        private double seekFromTime;
+        double maxAudioPos = 0;
+        double minAudioPos = double.MaxValue;
 
-        public long Length => _mediaPlayer.Length;
-        public long Time => _mediaPlayer.Time;
-        public bool IsPlaying => _mediaPlayer.IsPlaying;
+        public double Length
+        {
+            get
+            {
+                return videoDuration;
+            }
+        }
 
-        public event EventHandler Playing;
-        public event EventHandler<MediaPlayerTimeChangedEventArgs> TimeChanged;
+        public double Time
+        {
+            get
+            {
+                return videoTime;
+            }
+        }
 
-        public MediaHandler(VideoView videoView)
+        public event EventHandler<TimeChangedEventArgs> TimeChanged;
+
+        public event EventHandler<VideoPlayerKeyDownEventArgs> VideoPlayerKeyDown;
+
+        public event EventHandler<EventArgs> DurationKnown;
+
+        public MediaHandler(WebView2 videoView)
         {
             _videoView = videoView;
-            InitializeLibVLC();
-            InitializeMediaPlayer();
         }
 
-        private void InitializeLibVLC()
+        public async Task InitializeWebViewAsync()
         {
-            _libVLC = new LibVLC("--input-repeat=2");
+            //_videoView.CoreWebView2InitializationCompleted += VideoWebView_CoreWebView2InitializationCompleted;
+            _videoView.WebMessageReceived += VideoWebView_WebMessageReceived;
+            var environment = await CoreWebView2Environment.CreateAsync(null, null, new CoreWebView2EnvironmentOptions("--autoplay-policy=no-user-gesture-required"));
+            await _videoView.EnsureCoreWebView2Async(environment);
         }
 
-        private void InitializeMediaPlayer()
+        // handles updates from the video player in the html
+        private void VideoWebView_WebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
-            _mediaPlayer = new MediaPlayer(_libVLC);
-            _mediaPlayer.TimeChanged += (sender, e) => TimeChanged?.Invoke(sender, e);
-            _mediaPlayer.Playing += (sender, e) => Playing?.Invoke(sender, e);
-            _videoView.MediaPlayer = _mediaPlayer;
+            var messageText = e.WebMessageAsJson;
+            var message = System.Text.Json.JsonDocument.Parse(messageText);
+            switch (message.RootElement.GetProperty("eventType").GetString())
+            {
+                case "currentTime":
+                    {
+                        var payload = System.Text.Json.JsonDocument.Parse(message.RootElement.GetProperty("data").ToString());
+
+                        double currentTime = payload.RootElement.GetProperty("currentTime").GetDouble();
+                        double duration = payload.RootElement.GetProperty("duration").GetDouble();
+
+                        this.videoTime = currentTime;
+                        
+                        //todo - maybe don't need event and don't need duration.
+
+                        // raise event 
+                        TimeChanged?.Invoke(sender, new TimeChangedEventArgs(currentTime, duration));
+                        //labelTime.Text = $"Time: {TimeSpan.FromSeconds(currentTime):mm\\:ss} / {TimeSpan.FromSeconds(duration):mm\\:ss}";
+                    }
+                    break;
+
+                case "keyDown":
+                    {
+                        var payload = System.Text.Json.JsonDocument.Parse(message.RootElement.GetProperty("data").ToString());
+
+                        string keyCode = payload.RootElement.GetProperty("keyCode").GetString();
+                        bool shiftKey = payload.RootElement.GetProperty("shiftKey").GetBoolean();
+
+                        // raise event
+                        VideoPlayerKeyDown?.Invoke(sender, new VideoPlayerKeyDownEventArgs(keyCode, shiftKey));
+                    }
+
+                    break;
+
+                case "duration":
+                    {
+                        var payload = System.Text.Json.JsonDocument.Parse(message.RootElement.GetProperty("data").ToString());
+
+                        this.videoDuration = payload.RootElement.GetProperty("duration").GetDouble();
+
+                        // raise event
+                        DurationKnown?.Invoke(sender, new EventArgs());
+                    }
+
+                    break;
+            }
+
         }
 
-        public void Play(string file)
+        public void Load(string fileName)
         {
-            _mediaPlayer.Play(new Media(_libVLC, file, FromType.FromPath));
+            string html = $@"
+            <html>
+                <script src='http://Resources/VideoPlayer.js'></script>
+                <body onload='initVideoHandler(1000)'>
+                    <video id='videoPlayer' loop src='http://Source/{Path.GetFileName(fileName)}' type='video/mp4'
+                        width='100%' height='100%'></video>
+                </body>
+            </html>";
+            _videoView.CoreWebView2.SetVirtualHostNameToFolderMapping("Source", Path.GetDirectoryName(fileName), CoreWebView2HostResourceAccessKind.Allow);
+            _videoView.CoreWebView2.SetVirtualHostNameToFolderMapping("Resources", Path.Combine(Application.StartupPath, "JS"), CoreWebView2HostResourceAccessKind.Allow);
+            _videoView.NavigateToString(html);
+
+            // from unloadmedia
+            maxAudioPos = 0;
+            minAudioPos = double.MaxValue;
+        }
+
+        public void Play()
+        {
+            _videoView.CoreWebView2.ExecuteScriptAsync("playVideo()");
         }
 
         public void PlayPause()
         {
-            _mediaPlayer.Pause();
-        }
-        public void UnloadMedia()
-        {
-            if (_mediaPlayer.IsPlaying)
-                _mediaPlayer.Pause();
-
-            _mediaPlayer.Media = null;
-
-            maxAudioLength = 0;
-            maxAudioPos = 0;
-            minAudioPos = long.MaxValue;
+            _videoView.CoreWebView2.ExecuteScriptAsync("playPauseVideo()");
         }
 
-
-        public void SeekForwardStep(long mediaTime)
+        public void SeekForwardStep(double mediaTime)
         {
-            if (mediaTime < _mediaPlayer.Length - seekStep)
+            if (mediaTime < videoDuration - seekStep)
             {
-                long targetTime = mediaTime + seekStep;
+                double targetTime = mediaTime + seekStep;
                 targetSeekDirection = 0;
                 targetSeekTime = targetTime;
                 targetSeekDirection = 1;
                 seekFromTime = mediaTime;
 
-                ThreadPool.QueueUserWorkItem(_ => { _mediaPlayer.SeekTo(TimeSpan.FromMilliseconds(targetTime)); });
+                _videoView.CoreWebView2.ExecuteScriptAsync($"seekToTime({targetTime})");
             }
         }
 
-        public void SeekBackwardStep(long mediaTime)
+        public void SeekBackwardStep(double mediaTime)
         {
             if (mediaTime > seekStep)
             {
-                long targetTime = mediaTime - seekStep;
+                double targetTime = mediaTime - seekStep;
                 targetSeekDirection = 0;
                 targetSeekTime = targetTime;
                 targetSeekDirection = -1;
                 seekFromTime = mediaTime;
 
-                ThreadPool.QueueUserWorkItem(_ => { _mediaPlayer.SeekTo(TimeSpan.FromMilliseconds(targetTime)); });
+                _videoView.CoreWebView2.ExecuteScriptAsync($"seekToTime({targetTime})");
             }
         }
-        public void SeekForwardTo(long targetTime)
+        public void SeekForwardTo(double targetTime)
         {
             SeekTo(targetTime, 1);
         }
 
-        public void SeekBackwardTo(long targetTime)
+        public void SeekBackwardTo(double targetTime)
         {
             SeekTo(targetTime, -1);
         }
 
-        public void SeekTo(long targetTime, int direction = 0)
+        public void SeekTo(double targetTime, int direction = 0)
         {
             targetSeekDirection = 0;
             targetSeekTime = targetTime;
             targetSeekDirection = direction;
-            seekFromTime = _mediaPlayer.Time;
+            seekFromTime = videoTime;
 
-            ThreadPool.QueueUserWorkItem(_ => { _mediaPlayer.SeekTo(TimeSpan.FromMilliseconds(targetTime)); });
+            _videoView.CoreWebView2.ExecuteScriptAsync($"seekToTime({targetTime})");
         }
 
-        public void CreateLibVLCWithOptions(params string[] options)
-        {
-            if (_libVLC != null)
-            {
-                _videoView.MediaPlayer = null;
-                _mediaPlayer.Dispose();
-                _mediaPlayer = null;
-                _libVLC.Dispose();
-                _libVLC = null;
-            }
-
-            _libVLC = new LibVLC(options);
-            InitializeMediaPlayer();
-        }
-
-        public bool HandleMovement(long time)
+        public bool HandleMovement(double time)
         {
             // right
             // if loop finished - reset max
-            if (Math.Abs(maxAudioPos - maxAudioLength) < 200 || time == 0)
+            if (Math.Abs(maxAudioPos - videoDuration) < 200 || time == 0)
                 maxAudioPos = 0;
 
             // if moving forward - make sure we don't move backwards
@@ -155,7 +209,7 @@ namespace VideoAudioMediaPlayer
             }
             else
                 // reset the other direction's min
-                minAudioPos = long.MaxValue;
+                minAudioPos = double.MaxValue;
 
             // left - if moved too far off the minimum - not good - ignore
             if (targetSeekDirection < 0 && time > minAudioPos + (((seekFromTime - targetSeekTime) / 2)))
@@ -168,15 +222,10 @@ namespace VideoAudioMediaPlayer
             return true;
         }
 
-        internal void SetupPlayerInputEvents()
+        // set gain (1 = no gain, <1 - lower volume, >1 - increase volume
+        public void SetGain(double gain)
         {
-            _mediaPlayer.EnableMouseInput = false;
-            _mediaPlayer.EnableKeyInput = false;
-        }
-
-        internal void SampleAudioLength()
-        {
-            maxAudioLength = _mediaPlayer.Length;
+            _videoView.CoreWebView2.ExecuteScriptAsync("playPauseVideo()");
         }
     }
 }

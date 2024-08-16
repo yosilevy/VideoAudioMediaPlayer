@@ -17,16 +17,7 @@ namespace VideoAudioMediaPlayer
         {
             if (disposing && (components != null))
             {
-                Trace.WriteLine("disposing");
                 components.Dispose();
-                // final disposing sometimes gets stuck
-                //this.Invoke((MethodInvoker)delegate
-                //{
-                //    this._mediaPlayer?.Dispose();
-                //    this._libVLC?.Dispose();
-                //});
-                
-                Trace.WriteLine("After disposing");
             }
             base.Dispose(disposing);
         }
@@ -43,12 +34,9 @@ namespace VideoAudioMediaPlayer
             playbackTimer = new System.Windows.Forms.Timer(components);
             waveformPictureBox = new PictureBox();
             lblInfo = new Label();
-            mainVideoView = new LibVLCSharp.WinForms.VideoView();
-            menuStrip1 = new MenuStrip();
-            louderToolStripMenuItem = new ToolStripMenuItem();
+            videoWebView = new Microsoft.Web.WebView2.WinForms.WebView2();
             ((System.ComponentModel.ISupportInitialize)waveformPictureBox).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)mainVideoView).BeginInit();
-            menuStrip1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)videoWebView).BeginInit();
             SuspendLayout();
             // 
             // waveformPictureBox
@@ -60,7 +48,6 @@ namespace VideoAudioMediaPlayer
             waveformPictureBox.TabIndex = 1;
             waveformPictureBox.TabStop = false;
             waveformPictureBox.MouseClick += WaveformPictureBox_MouseClick;
-            waveformPictureBox.PreviewKeyDown += Generic_PreviewKeyDown;
             // 
             // lblInfo
             // 
@@ -68,41 +55,23 @@ namespace VideoAudioMediaPlayer
             lblInfo.Dock = DockStyle.Top;
             lblInfo.Font = new Font("Arial", 13.875F, FontStyle.Bold, GraphicsUnit.Point, 0);
             lblInfo.ForeColor = SystemColors.ButtonFace;
-            lblInfo.Location = new Point(0, 40);
+            lblInfo.Location = new Point(0, 0);
             lblInfo.Name = "lblInfo";
             lblInfo.Size = new Size(1662, 59);
             lblInfo.TabIndex = 2;
             lblInfo.TextAlign = ContentAlignment.MiddleCenter;
-            lblInfo.PreviewKeyDown += Generic_PreviewKeyDown;
             // 
-            // mainVideoView
+            // videoWebView
             // 
-            mainVideoView.BackColor = Color.Black;
-            mainVideoView.Dock = DockStyle.Fill;
-            mainVideoView.Location = new Point(0, 99);
-            mainVideoView.MediaPlayer = null;
-            mainVideoView.Name = "mainVideoView";
-            mainVideoView.Size = new Size(1662, 673);
-            mainVideoView.TabIndex = 4;
-            mainVideoView.Click += mainVideoView_Click;
-            mainVideoView.PreviewKeyDown += Generic_PreviewKeyDown;
-            // 
-            // menuStrip1
-            // 
-            menuStrip1.ImageScalingSize = new Size(32, 32);
-            menuStrip1.Items.AddRange(new ToolStripItem[] { louderToolStripMenuItem });
-            menuStrip1.Location = new Point(0, 0);
-            menuStrip1.Name = "menuStrip1";
-            menuStrip1.Size = new Size(1662, 40);
-            menuStrip1.TabIndex = 5;
-            menuStrip1.Text = "menuStrip1";
-            // 
-            // louderToolStripMenuItem
-            // 
-            louderToolStripMenuItem.Name = "louderToolStripMenuItem";
-            louderToolStripMenuItem.Size = new Size(108, 36);
-            louderToolStripMenuItem.Text = "Louder";
-            louderToolStripMenuItem.Click += louderToolStripMenuItem_Click;
+            videoWebView.AllowExternalDrop = true;
+            videoWebView.CreationProperties = null;
+            videoWebView.DefaultBackgroundColor = Color.White;
+            videoWebView.Dock = DockStyle.Fill;
+            videoWebView.Location = new Point(0, 59);
+            videoWebView.Name = "videoWebView";
+            videoWebView.Size = new Size(1662, 713);
+            videoWebView.TabIndex = 6;
+            videoWebView.ZoomFactor = 1D;
             // 
             // MainForm
             // 
@@ -112,12 +81,10 @@ namespace VideoAudioMediaPlayer
             BackColor = SystemColors.Desktop;
             BackgroundImageLayout = ImageLayout.Stretch;
             ClientSize = new Size(1662, 952);
-            Controls.Add(mainVideoView);
+            Controls.Add(videoWebView);
             Controls.Add(waveformPictureBox);
             Controls.Add(lblInfo);
-            Controls.Add(menuStrip1);
             KeyPreview = true;
-            MainMenuStrip = menuStrip1;
             Name = "MainForm";
             Text = "Video & Audio Playback";
             FormClosing += MainForm_FormClosing;
@@ -125,22 +92,15 @@ namespace VideoAudioMediaPlayer
             Load += MainForm_Load;
             DragDrop += MainForm_DragDrop;
             DragEnter += MainForm_DragEnter;
-            KeyDown += MainForm_KeyDown;
-            PreviewKeyDown += Generic_PreviewKeyDown;
             ((System.ComponentModel.ISupportInitialize)waveformPictureBox).EndInit();
-            ((System.ComponentModel.ISupportInitialize)mainVideoView).EndInit();
-            menuStrip1.ResumeLayout(false);
-            menuStrip1.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)videoWebView).EndInit();
             ResumeLayout(false);
-            PerformLayout();
         }
 
         #endregion
         private System.Windows.Forms.Timer playbackTimer;
         private PictureBox waveformPictureBox;
         private Label lblInfo;
-        private LibVLCSharp.WinForms.VideoView mainVideoView;
-        private MenuStrip menuStrip1;
-        private ToolStripMenuItem louderToolStripMenuItem;
+        private Microsoft.Web.WebView2.WinForms.WebView2 videoWebView;
     }
 }

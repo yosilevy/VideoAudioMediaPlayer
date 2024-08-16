@@ -19,9 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="LibVLCSharp" Version="3.8.5" />
-    <PackageReference Include="LibVLCSharp.WinForms" Version="3.8.5" />
-    <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.20" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2592.51" />
   </ItemGroup>
 
   <ItemGroup>
@@ -82,6 +80,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="FFMPEG\swscale-8.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="JS\VideoPlayer.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Properties\Settings.settings">

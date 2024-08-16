@@ -16,7 +16,7 @@ namespace VideoAudioMediaPlayer
             {
                 if (lastAdded == null || (number - lastAdded.Value >= distance))
                 {
-                    result.Add(number);
+                    result.Add(number/(double)1000);
                     lastAdded = number;
                 }
             }

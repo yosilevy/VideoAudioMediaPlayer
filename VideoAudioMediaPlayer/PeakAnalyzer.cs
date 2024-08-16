@@ -19,6 +19,7 @@ namespace VideoAudioMediaPlayer
             ffprobe.StartInfo.RedirectStandardOutput = true;
             ffprobe.StartInfo.RedirectStandardError = true;
             ffprobe.StartInfo.CreateNoWindow = true;
+            ffprobe.StartInfo.WindowStyle = ProcessWindowStyle.Minimized;
             ffprobe.OutputDataReceived += Ffmpeg_OutputDataReceived;
             ffprobe.ErrorDataReceived += Ffmpeg_ErrorDataReceived;
             ffprobe.Start();

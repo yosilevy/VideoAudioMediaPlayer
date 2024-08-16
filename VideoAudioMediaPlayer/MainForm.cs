@@ -1,5 +1,3 @@
-using LibVLCSharp.Shared;
-using LibVLCSharp.WinForms;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -12,15 +10,11 @@ using System.Threading;
 using System.Windows.Forms;
 using System.Xml.Serialization;
 using VideoAudioMediaPlayer.Properties;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskbarClock;
 
 namespace VideoAudioMediaPlayer
 {
     public partial class MainForm : Form
     {
-        [DllImport("user32.dll")]
-        private static extern bool SetForegroundWindow(IntPtr hWnd);
-
         private string displayFileName;
         private string waveFormFileName;
         private MediaHandler _mediaHandler;
@@ -29,31 +23,34 @@ namespace VideoAudioMediaPlayer
         private NamedPipeClient _namedPipeClient;
         private double[] peakSeconds;
         private string lastFile;
+        private double lastGain = 1;
         private bool initialPlay = false;
 
         public MainForm()
         {
             InitializeComponent();
-            InitializeHandlers();
             LoadSettings();
+            InitializeHandlers();
 
-            Trace.Listeners.Add(new TextWriterTraceListener(Path.Combine(Application.StartupPath, "log.txt"), "logger"));
-            Trace.AutoFlush = true;
-            Trace.WriteLine("Startup");
-
-            if (!DesignMode)
-                Core.Initialize();
+            // debugging...
+            //Trace.Listeners.Add(new TextWriterTraceListener(Path.Combine(Application.StartupPath, "log.txt"), "logger"));
+            //Trace.AutoFlush = true;
+            //Trace.WriteLine("Startup");
         }
 
         private void InitializeHandlers()
         {
-            _mediaHandler = new MediaHandler(mainVideoView);
-            _mediaHandler.Playing += OnMediaPlaying;
-            _mediaHandler.TimeChanged += OnTimeChanged;
-
+            // init single app mechanism
             _namedPipeServer = new NamedPipeServer(this);
             _namedPipeClient = new NamedPipeClient();
 
+            // init media player
+            _mediaHandler = new MediaHandler(videoWebView);
+            _mediaHandler.TimeChanged += OnVideoPlayerTimeChanged;
+            _mediaHandler.VideoPlayerKeyDown += OnVideoPlayerKeyDown;
+            _mediaHandler.DurationKnown += OnVideoPlayerDurationKnown;
+
+            // init wave form handler
             _waveformHandler = new WaveformHandler();
         }
 
@@ -62,19 +59,21 @@ namespace VideoAudioMediaPlayer
             waveFormFileName = Path.Combine(Application.StartupPath, "ffmpeg\\output.png");
         }
 
-        private void MainForm_Load(object sender, EventArgs e)
+        private async void MainForm_Load(object sender, System.EventArgs e)
         {
-            if (_namedPipeServer.IsFirstInstance())
-            {
-                _namedPipeServer.Start();
-                LoadPosition();
-                PlayInitialFile();
-            }
-            else
+            // if first instance - handle file
+            if (!_namedPipeServer.IsFirstInstance())
             {
                 _namedPipeClient.Send(Environment.GetCommandLineArgs());
                 Close();
+                return;
             }
+
+            // we're the only instance
+            _namedPipeServer.Start();
+            LoadPosition();
+
+            await PlayInitialFile();
         }
 
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
@@ -109,8 +108,11 @@ namespace VideoAudioMediaPlayer
             }
         }
 
-        private void PlayInitialFile()
+        private async Task PlayInitialFile()
         {
+            // init web view
+            await _mediaHandler.InitializeWebViewAsync();
+
             string[] args = Environment.GetCommandLineArgs();
             if (args.Length > 1)
             {
@@ -135,11 +137,12 @@ namespace VideoAudioMediaPlayer
                 return;
             }
 
+
             initialPlay = true;
 
-            _mediaHandler.UnloadMedia();
-
             lastFile = file;
+            lastGain = 1;
+
             displayFileName = Path.GetFileName(file);
             lblInfo.Text = displayFileName;
 
@@ -148,40 +151,32 @@ namespace VideoAudioMediaPlayer
 
             peakSeconds = new PeakAnalyzer().AnalyzeFilePeaks(file);
 
-            // play new video
-            _mediaHandler.Play(file);
+            // load new video
+            _mediaHandler.Load(file);
 
             // bring to front and focus windows
             WindowsInteropConnector.FocusAndForegroundForm(this);
         }
 
-        private void OnMediaPlaying(object? sender, EventArgs e)
+        private void OnVideoPlayerDurationKnown(object? sender, EventArgs e)
         {
             if (InvokeRequired)
             {
-                this.Invoke((MethodInvoker)delegate { OnMediaPlaying(sender, e); });
+                this.Invoke((MethodInvoker)delegate { OnVideoPlayerDurationKnown(sender, e); });
                 return;
             }
 
-            if (!initialPlay)
-                return;
-
-            initialPlay = false;
-            // allow mouse clicks - need to disable event handling
-            _mediaHandler.SetupPlayerInputEvents();
-
-            _mediaHandler.SampleAudioLength();
-
+            // update waveform
             _waveformHandler.UpdateWaveFormWithPeaks(peakSeconds, waveformPictureBox, _mediaHandler.Length);
         }
 
-        private void OnTimeChanged(object? sender, MediaPlayerTimeChangedEventArgs e)
+        private void OnVideoPlayerTimeChanged(object? sender, TimeChangedEventArgs e)
         {
             try
             {
                 if (InvokeRequired)
                 {
-                    this.Invoke((MethodInvoker)delegate { OnTimeChanged(sender, e); });
+                    this.Invoke((MethodInvoker)delegate { OnVideoPlayerTimeChanged(sender, e); });
                     return;
                 }
 
@@ -201,18 +196,30 @@ namespace VideoAudioMediaPlayer
             return string.Format("{0:D2}:{1:D2}", ts.Minutes, ts.Seconds);
         }
 
-        private void MainForm_KeyDown(object sender, KeyEventArgs e)
+        private void OnVideoPlayerKeyDown(object? sender, VideoPlayerKeyDownEventArgs e)
         {
-            long mediaTime = _mediaHandler.Time;
+            var mediaTime = _mediaHandler.Time;
 
             switch (e.KeyCode)
             {
-                case Keys.Space:
+                case "Space":
                     _mediaHandler.PlayPause();
                     break;
 
-                case Keys.Right:
-                    if (!e.Shift)
+                case "Equal":
+                    if (e.ShiftKey)
+                    {
+                        lastGain += 1;
+
+                        // double the volume
+                        _mediaHandler.SetGain(lastGain);
+                        _mediaHandler.Play();
+                    }
+
+                    break;
+
+                case "ArrowRight":
+                    if (!e.ShiftKey)
                     {
                         _mediaHandler.SeekForwardStep(mediaTime);
                     }
@@ -221,13 +228,13 @@ namespace VideoAudioMediaPlayer
                         double? time = GetNextPeak(mediaTime);
                         if (time != null)
                         {
-                            _mediaHandler.SeekForwardTo((long)time);
+                            _mediaHandler.SeekForwardTo(time.Value);
                         }
                     }
                     break;
 
-                case Keys.Left:
-                    if (!e.Shift)
+                case "ArrowLeft":
+                    if (!e.ShiftKey)
                     {
                         _mediaHandler.SeekBackwardStep(mediaTime);
                     }
@@ -236,13 +243,14 @@ namespace VideoAudioMediaPlayer
                         double? time = GetPreviousPeak(mediaTime);
                         if (time != null)
                         {
-                            _mediaHandler.SeekBackwardTo((long)time);
+                            _mediaHandler.SeekBackwardTo(time.Value);
                         }
                     }
                     break;
             }
         }
-        private void mainVideoView_Click(object sender, EventArgs e)
+
+        private void mainVideoView_Click(object sender, System.EventArgs e)
         {
             _mediaHandler.PlayPause();
         }
@@ -257,16 +265,16 @@ namespace VideoAudioMediaPlayer
 
             double clickRatio = (double)e.X / waveformPictureBox.Width;
             double newPosition = clickRatio * _mediaHandler.Length;
-            _mediaHandler.SeekTo((long)newPosition);
+            _mediaHandler.SeekTo(newPosition);
 
-            if (!_mediaHandler.IsPlaying)
-                _mediaHandler.PlayPause();
+            _mediaHandler.Play();
         }
 
         private double? GetPreviousPeak(double mediaTime)
         {
+            // get the peak that is closest to the current time - 0.1
             return peakSeconds.Select((value, index) => new { value, index })
-                              .FirstOrDefault(x => x.value >= mediaTime)?.index is int index && index > 0
+                              .FirstOrDefault(x => x.value >= (mediaTime - 0.1))?.index is int index && index > 0
                 ? peakSeconds[index - 1]
                 : (double?)null;
         }
@@ -305,24 +313,6 @@ namespace VideoAudioMediaPlayer
             }
 
             Settings.Default.Save();
-        }
-
-        private void louderToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            if (InvokeRequired)
-            {
-                this.Invoke((MethodInvoker)delegate { louderToolStripMenuItem_Click(sender, e); });
-                return;
-            }
-
-            _mediaHandler.CreateLibVLCWithOptions("--gain=5.5");
-            PlayFile(lastFile);
-        }
-
-        private void Generic_PreviewKeyDown(object sender, PreviewKeyDownEventArgs e)
-        {
-            if (e.KeyCode == Keys.Right || e.KeyCode == Keys.Left)
-                e.IsInputKey = true;
         }
     }
 }

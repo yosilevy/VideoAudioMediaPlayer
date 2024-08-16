@@ -48,7 +48,7 @@ namespace VideoAudioMediaPlayer
             }
         }
 
-        public void DrawWaveformWithPosition(long mediaTime, PictureBox pictureBox, long mediaLength)
+        public void DrawWaveformWithPosition(double mediaTime, PictureBox pictureBox, double mediaLength)
         {
             if (pictureBox.Image == null)
                 return;
@@ -65,7 +65,7 @@ namespace VideoAudioMediaPlayer
             pictureBox.Image = tempImage;
         }
 
-        public void UpdateWaveFormWithPeaks(double[] peaks, PictureBox pictureBox, long mediaLength)
+        public void UpdateWaveFormWithPeaks(double[] peaks, PictureBox pictureBox, double mediaLength)
         {
             using (Graphics g = Graphics.FromImage(waveformImage))
             {
