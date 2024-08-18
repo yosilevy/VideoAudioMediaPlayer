@@ -124,7 +124,6 @@ namespace VideoAudioMediaPlayer
             else
             {
                 // Debug example file
-                // PlayFile("C:\\Users\\JosephLevy\\Videos\\04M22S_1710605062.mp4");
                 PlayFile("C:\\Users\\JosephLevy\\Videos\\04M22S_1710605062.mp4");
             }
         }
@@ -137,14 +136,13 @@ namespace VideoAudioMediaPlayer
                 return;
             }
 
-
             initialPlay = true;
 
             lastFile = file;
             lastGain = 1;
 
             displayFileName = Path.GetFileName(file);
-            lblInfo.Text = displayFileName;
+            setFormText(displayFileName);
 
             _waveformHandler.GenerateWaveform(file, waveFormFileName, waveformPictureBox.Width, waveformPictureBox.Height);
             _waveformHandler.LoadWaveform(waveFormFileName, waveformPictureBox);
@@ -172,22 +170,21 @@ namespace VideoAudioMediaPlayer
 
         private void OnVideoPlayerTimeChanged(object? sender, TimeChangedEventArgs e)
         {
-            try
+            if (InvokeRequired)
             {
-                if (InvokeRequired)
-                {
-                    this.Invoke((MethodInvoker)delegate { OnVideoPlayerTimeChanged(sender, e); });
-                    return;
-                }
-
-                if (!_mediaHandler.HandleMovement(e.Time))
-                    return;
-
-                _waveformHandler.DrawWaveformWithPosition(e.Time, waveformPictureBox, _mediaHandler.Length);
-
-                lblInfo.Text = $"{displayFileName} - {ToMins(e.Time / 1000)} of {ToMins(_mediaHandler.Length / 1000)}";
+                this.Invoke((MethodInvoker)delegate { OnVideoPlayerTimeChanged(sender, e); });
+                return;
             }
-            catch { }
+
+            if (!_mediaHandler.HandleMovement(e.Time))
+                return;
+
+            if (_mediaHandler.Length == 0)
+                return;
+
+            _waveformHandler.DrawWaveformWithPosition(e.Time, waveformPictureBox, _mediaHandler.Length);
+
+            setFormText(displayFileName, e.Time);
         }
 
         private string ToMins(double seconds)
@@ -313,6 +310,20 @@ namespace VideoAudioMediaPlayer
             }
 
             Settings.Default.Save();
+        }
+
+        private void setFormText(string displayFileName)
+        {
+            setFormText(displayFileName, null);
+        }
+
+        private void setFormText(string displayFileName, double? time)
+        {
+            this.Text = $"Smart Player - {displayFileName}" +
+                (time.HasValue
+                    ? $" - {ToMins(time.Value)} of {ToMins(_mediaHandler.Length)}"
+                    : ""
+                    );
         }
     }
 }

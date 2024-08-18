@@ -6,7 +6,7 @@ using System.Linq;
 namespace VideoAudioMediaPlayer
 {
     public class PeakAnalyzer
-    {
+      {
         private int peakSamplesPerSecond = 4;
 
         public double[] AnalyzeFilePeaks(string inputFilePath)

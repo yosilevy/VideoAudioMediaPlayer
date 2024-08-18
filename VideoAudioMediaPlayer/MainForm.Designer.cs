@@ -33,7 +33,6 @@ namespace VideoAudioMediaPlayer
             components = new System.ComponentModel.Container();
             playbackTimer = new System.Windows.Forms.Timer(components);
             waveformPictureBox = new PictureBox();
-            lblInfo = new Label();
             videoWebView = new Microsoft.Web.WebView2.WinForms.WebView2();
             ((System.ComponentModel.ISupportInitialize)waveformPictureBox).BeginInit();
             ((System.ComponentModel.ISupportInitialize)videoWebView).BeginInit();
@@ -49,27 +48,15 @@ namespace VideoAudioMediaPlayer
             waveformPictureBox.TabStop = false;
             waveformPictureBox.MouseClick += WaveformPictureBox_MouseClick;
             // 
-            // lblInfo
-            // 
-            lblInfo.BackColor = SystemColors.HotTrack;
-            lblInfo.Dock = DockStyle.Top;
-            lblInfo.Font = new Font("Arial", 13.875F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            lblInfo.ForeColor = SystemColors.ButtonFace;
-            lblInfo.Location = new Point(0, 0);
-            lblInfo.Name = "lblInfo";
-            lblInfo.Size = new Size(1662, 59);
-            lblInfo.TabIndex = 2;
-            lblInfo.TextAlign = ContentAlignment.MiddleCenter;
-            // 
             // videoWebView
             // 
             videoWebView.AllowExternalDrop = true;
             videoWebView.CreationProperties = null;
-            videoWebView.DefaultBackgroundColor = Color.White;
+            videoWebView.DefaultBackgroundColor = Color.Black;
             videoWebView.Dock = DockStyle.Fill;
-            videoWebView.Location = new Point(0, 59);
+            videoWebView.Location = new Point(0, 0);
             videoWebView.Name = "videoWebView";
-            videoWebView.Size = new Size(1662, 713);
+            videoWebView.Size = new Size(1662, 772);
             videoWebView.TabIndex = 6;
             videoWebView.ZoomFactor = 1D;
             // 
@@ -83,7 +70,6 @@ namespace VideoAudioMediaPlayer
             ClientSize = new Size(1662, 952);
             Controls.Add(videoWebView);
             Controls.Add(waveformPictureBox);
-            Controls.Add(lblInfo);
             KeyPreview = true;
             Name = "MainForm";
             Text = "Video & Audio Playback";
@@ -100,7 +86,6 @@ namespace VideoAudioMediaPlayer
         #endregion
         private System.Windows.Forms.Timer playbackTimer;
         private PictureBox waveformPictureBox;
-        private Label lblInfo;
         private Microsoft.Web.WebView2.WinForms.WebView2 videoWebView;
     }
 }

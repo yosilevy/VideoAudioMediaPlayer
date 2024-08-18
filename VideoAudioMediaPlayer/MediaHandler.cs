@@ -1,9 +1,12 @@
-﻿using Microsoft.Web.WebView2.Core;
+﻿using Microsoft.VisualBasic.ApplicationServices;
+using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Threading;
 using static System.Runtime.CompilerServices.RuntimeHelpers;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskbarClock;
 
 namespace VideoAudioMediaPlayer
@@ -11,6 +14,16 @@ namespace VideoAudioMediaPlayer
     public class MediaHandler
     {
         WebView2 _videoView;
+        string[] options = new string[]
+        {
+            "--allow-file-access-from-files",
+            "--autoplay-policy=no-user-gesture-required",
+            //"--enable-hardware-accelerated-video-decode",
+            //"--disable-gpu-vsync",
+            //"--ignore-gpu-blocklist",
+            //"--disable-software-rasterizer",
+            //"--enable-features=VaapiVideoDecoder",
+        };
 
         private double videoDuration = 0;
         private double videoTime = 0;
@@ -50,9 +63,12 @@ namespace VideoAudioMediaPlayer
 
         public async Task InitializeWebViewAsync()
         {
-            //_videoView.CoreWebView2InitializationCompleted += VideoWebView_CoreWebView2InitializationCompleted;
             _videoView.WebMessageReceived += VideoWebView_WebMessageReceived;
-            var environment = await CoreWebView2Environment.CreateAsync(null, null, new CoreWebView2EnvironmentOptions("--autoplay-policy=no-user-gesture-required"));
+            var environment = await CoreWebView2Environment.CreateAsync(null, null,
+                new CoreWebView2EnvironmentOptions(String.Join(" ", options)));
+
+            _videoView.NavigationCompleted += _videoView_NavigationCompleted;
+
             await _videoView.EnsureCoreWebView2Async(environment);
         }
 
@@ -76,7 +92,6 @@ namespace VideoAudioMediaPlayer
 
                         // raise event 
                         TimeChanged?.Invoke(sender, new TimeChangedEventArgs(currentTime, duration));
-                        //labelTime.Text = $"Time: {TimeSpan.FromSeconds(currentTime):mm\\:ss} / {TimeSpan.FromSeconds(duration):mm\\:ss}";
                     }
                     break;
 
@@ -108,23 +123,42 @@ namespace VideoAudioMediaPlayer
 
         }
 
+        string lastLoadedUri;
+
         public void Load(string fileName)
         {
-            string html = $@"
-            <html>
-                <script src='http://Resources/VideoPlayer.js'></script>
-                <body onload='initVideoHandler(1000)'>
-                    <video id='videoPlayer' loop src='http://Source/{Path.GetFileName(fileName)}' type='video/mp4'
-                        width='100%' height='100%'></video>
-                </body>
-            </html>";
-            _videoView.CoreWebView2.SetVirtualHostNameToFolderMapping("Source", Path.GetDirectoryName(fileName), CoreWebView2HostResourceAccessKind.Allow);
-            _videoView.CoreWebView2.SetVirtualHostNameToFolderMapping("Resources", Path.Combine(Application.StartupPath, "JS"), CoreWebView2HostResourceAccessKind.Allow);
-            _videoView.NavigateToString(html);
+            #region "Old method"
+            //string html = $@"
+            //<html>
+            //    <script src='http://Resources/VideoPlayer.js'></script>
+            //    <body onload='initVideoHandler(1000)'>
+            //        <video id='videoPlayer' loop src='http://Source/{Path.GetFileName(fileName)}' type='video/mp4'
+            //            width='100%' height='100%'></video>
+            //    </body>
+            //</html>";
+            //_videoView.CoreWebView2.SetVirtualHostNameToFolderMapping("Source", Path.GetDirectoryName(fileName), CoreWebView2HostResourceAccessKind.Allow);
+            //_videoView.CoreWebView2.SetVirtualHostNameToFolderMapping("Resources", Path.Combine(Application.StartupPath, "Web"), CoreWebView2HostResourceAccessKind.Allow);
+            //_videoView.NavigateToString(html);
+
+            // with pause
+            //_videoView.NavigationCompleted += (sender, e) => { _videoView.CoreWebView2.ExecuteScriptAsync($"setTimeout(\"initVideoHandler('{new Uri(fileName).AbsoluteUri}', 300)\", 3000)"); };
+            #endregion
+
+            // save the file to be loaded upon navigation
+            lastLoadedUri = new Uri(fileName).AbsoluteUri;
+
+            // navigate to the HTML host - once navigation completes script will be run to load the file
+            _videoView.CoreWebView2.Navigate(new Uri(Path.Combine(Application.StartupPath, "Web\\MediaHandler.html")).AbsoluteUri);
 
             // from unloadmedia
             maxAudioPos = 0;
             minAudioPos = double.MaxValue;
+        }
+
+        private void _videoView_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
+        {
+            // video host loaded - load the last requested file
+            _videoView.CoreWebView2.ExecuteScriptAsync($"initVideoHandler('{lastLoadedUri}')");
         }
 
         public void Play()

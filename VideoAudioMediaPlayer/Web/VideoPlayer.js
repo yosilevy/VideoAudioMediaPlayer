@@ -4,18 +4,25 @@ var progressUpdater;
 var duration;
 
 // init variable and events
-function initVideoHandler(reqProgressUpdateFrequency) {
+function initVideoHandler(videoFile, reqProgressUpdateFrequency) {
     videoPlayer = document.getElementById('videoPlayer');
 
-    if (!reqProgressUpdateFrequency) reqProgressUpdateFrequency = 200;
-
-    progressUpdateFrequency = reqProgressUpdateFrequency;
-
-    postMessageToHost("duration", { duration: videoPlayer.duration });
+    // when video loaded - report duration
+    videoPlayer.addEventListener('canplaythrough', function (e) {
+        postMessageToHost("duration", { duration: videoPlayer.duration })
+        }, { once: true });
 
     document.body.addEventListener('keydown', function (e) {
         postMessageToHost("keyDown", { keyCode: e.code, shiftKey: e.shiftKey });
     });
+
+    if (reqProgressUpdateFrequency == null || reqProgressUpdateFrequency == 0)
+        progressUpdateFrequency = 100;
+    else
+        progressUpdateFrequency = reqProgressUpdateFrequency;
+
+    // load video
+    videoPlayer.src = videoFile;
 
     // can't autoplay video so play it now
     playVideo();
@@ -24,7 +31,11 @@ function initVideoHandler(reqProgressUpdateFrequency) {
 // plays video and updates hosts on progress
 function playVideo() {
     videoPlayer.play();
+
     progressUpdater = setInterval(updateCurrentTime, progressUpdateFrequency);
+}
+
+function onVideoReady() {
 }
 
 // pauses video playback and stops progress updates
