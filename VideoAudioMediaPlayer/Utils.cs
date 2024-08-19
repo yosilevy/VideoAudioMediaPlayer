@@ -15,14 +15,14 @@ namespace VideoAudioMediaPlayer
     }
     public class VideoPlayerKeyDownEventArgs
     {
-        public string KeyCode;
+        public string Key;
 
         public bool ShiftKey;
 
-        public VideoPlayerKeyDownEventArgs(string KeyCode, bool ShiftKey)
+        public VideoPlayerKeyDownEventArgs(string key, bool shiftKey)
         {
-            this.KeyCode = KeyCode;
-            this.ShiftKey = ShiftKey;
+            this.Key = key;
+            this.ShiftKey = shiftKey;
         }
     }
 }

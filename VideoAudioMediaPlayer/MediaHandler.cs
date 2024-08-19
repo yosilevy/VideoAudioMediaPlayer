@@ -99,11 +99,11 @@ namespace VideoAudioMediaPlayer
                     {
                         var payload = System.Text.Json.JsonDocument.Parse(message.RootElement.GetProperty("data").ToString());
 
-                        string keyCode = payload.RootElement.GetProperty("keyCode").GetString();
+                        string key = payload.RootElement.GetProperty("key").GetString();
                         bool shiftKey = payload.RootElement.GetProperty("shiftKey").GetBoolean();
 
                         // raise event
-                        VideoPlayerKeyDown?.Invoke(sender, new VideoPlayerKeyDownEventArgs(keyCode, shiftKey));
+                        VideoPlayerKeyDown?.Invoke(sender, new VideoPlayerKeyDownEventArgs(key, shiftKey));
                     }
 
                     break;
@@ -260,6 +260,11 @@ namespace VideoAudioMediaPlayer
         public void SetGain(double gain)
         {
             _videoView.CoreWebView2.ExecuteScriptAsync("playPauseVideo()");
+        }
+
+        public void ShowHelp()
+        {
+            _videoView.CoreWebView2.ExecuteScriptAsync("showHelp()");
         }
     }
 }

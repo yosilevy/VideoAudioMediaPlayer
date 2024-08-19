@@ -197,21 +197,23 @@ namespace VideoAudioMediaPlayer
         {
             var mediaTime = _mediaHandler.Time;
 
-            switch (e.KeyCode)
+            switch (e.Key)
             {
-                case "Space":
+                case "?":
+                    _mediaHandler.ShowHelp();
+                    break;
+
+                case " ":
+                case "Enter":
                     _mediaHandler.PlayPause();
                     break;
 
-                case "Equal":
-                    if (e.ShiftKey)
-                    {
-                        lastGain += 1;
+                case "+":
+                    lastGain += 1;
 
-                        // double the volume
-                        _mediaHandler.SetGain(lastGain);
-                        _mediaHandler.Play();
-                    }
+                    // double the volume
+                    _mediaHandler.SetGain(lastGain);
+                    _mediaHandler.Play();
 
                     break;
 

@@ -13,7 +13,7 @@ function initVideoHandler(videoFile, reqProgressUpdateFrequency) {
         }, { once: true });
 
     document.body.addEventListener('keydown', function (e) {
-        postMessageToHost("keyDown", { keyCode: e.code, shiftKey: e.shiftKey });
+        postMessageToHost("keyDown", { key: e.key, shiftKey: e.shiftKey });
     });
 
     if (reqProgressUpdateFrequency == null || reqProgressUpdateFrequency == 0)
@@ -82,4 +82,13 @@ function setGain(gainLevel) {
 // posts a message to the host
 function postMessageToHost(eventType, data) {
     window.chrome.webview.postMessage({ eventType: eventType, data: data });
+}
+
+function showHelp() {
+    pauseVideo();
+
+    helpText = "Play/Pause - Space/Enter\n" +
+        "Right/Left - seek forward/back\n" +
+        "Shift + Right/Left - seek to next audio peak\n";
+    alert(helpText);
 }
