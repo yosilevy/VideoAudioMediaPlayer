@@ -15,6 +15,10 @@ function initVideoHandler(videoFile, reqProgressUpdateFrequency) {
     document.body.addEventListener('keydown', function (e) {
         postMessageToHost("keyDown", { key: e.key, shiftKey: e.shiftKey });
     });
+    document.body.addEventListener('click', function (e) {
+        // simulate a keydown to space
+        postMessageToHost("keyDown", { key: " ", shiftKey: false });
+    });
 
     if (reqProgressUpdateFrequency == null || reqProgressUpdateFrequency == 0)
         progressUpdateFrequency = 100;

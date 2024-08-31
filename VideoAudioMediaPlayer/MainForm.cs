@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Formats.Tar;
 using System.IO;
 using System.IO.Pipes;
 using System.Linq;
@@ -144,11 +145,6 @@ namespace VideoAudioMediaPlayer
             displayFileName = Path.GetFileName(file);
             setFormText(displayFileName);
 
-            _waveformHandler.GenerateWaveform(file, waveFormFileName, waveformPictureBox.Width, waveformPictureBox.Height);
-            _waveformHandler.LoadWaveform(waveFormFileName, waveformPictureBox);
-
-            peakSeconds = new PeakAnalyzer().AnalyzeFilePeaks(file);
-
             // load new video
             _mediaHandler.Load(file);
 
@@ -164,8 +160,17 @@ namespace VideoAudioMediaPlayer
                 return;
             }
 
-            // update waveform
-            _waveformHandler.UpdateWaveFormWithPeaks(peakSeconds, waveformPictureBox, _mediaHandler.Length);
+
+            Task.Run(() =>
+            {
+                _waveformHandler.GenerateWaveform(lastFile, waveFormFileName, waveformPictureBox.Width, waveformPictureBox.Height);
+                _waveformHandler.LoadWaveform(waveFormFileName, waveformPictureBox);
+
+                peakSeconds = new PeakAnalyzer().AnalyzeFilePeaks(lastFile);
+
+                // update waveform
+                _waveformHandler.UpdateWaveFormWithPeaks(peakSeconds, waveformPictureBox, _mediaHandler.Length);
+            });
         }
 
         private void OnVideoPlayerTimeChanged(object? sender, TimeChangedEventArgs e)
