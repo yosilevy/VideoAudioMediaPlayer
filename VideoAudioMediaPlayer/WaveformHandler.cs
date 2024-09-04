@@ -50,13 +50,14 @@ namespace VideoAudioMediaPlayer
 
         public void DrawWaveformWithPosition(double mediaTime, PictureBox pictureBox, double mediaLength)
         {
-            if (pictureBox.Image == null)
-                return;
-
             Bitmap tempImage = new Bitmap(pictureBox.Width, pictureBox.Height);
             using (Graphics g = Graphics.FromImage(tempImage))
             {
-                g.DrawImage(waveformImage, new Rectangle(0, 0, pictureBox.Width, pictureBox.Height));
+                if (waveformImage != null)
+                    g.DrawImage(waveformImage, new Rectangle(0, 0, pictureBox.Width, pictureBox.Height));
+                else
+                    g.DrawLine(Pens.White, new Point(0, pictureBox.Height / 2), new Point(pictureBox.Width, pictureBox.Height / 2));
+
                 double positionRatio = (double)mediaTime / mediaLength;
                 int x = (int)(positionRatio * pictureBox.Width);
                 g.DrawLine(Pens.Green, x, 0, x, pictureBox.Height);

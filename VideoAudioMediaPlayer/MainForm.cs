@@ -125,7 +125,8 @@ namespace VideoAudioMediaPlayer
             else
             {
                 // Debug example file
-                PlayFile("C:\\Users\\JosephLevy\\Videos\\04M22S_1710605062.mp4");
+                //PlayFile("C:\\Users\\JosephLevy\\Videos\\04M22S_1710605062.mp4");
+                PlayFile("C:\\Users\\JosephLevy\\Desktop\\Desktop\\אדם\\RDI\\סרטים שהוגשו\\סרטים 232\\1.mp4");
             }
         }
 
@@ -160,6 +161,8 @@ namespace VideoAudioMediaPlayer
                 return;
             }
 
+            if(_mediaHandler.Length > 30)
+                return;
 
             Task.Run(() =>
             {
