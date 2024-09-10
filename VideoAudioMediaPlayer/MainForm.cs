@@ -161,7 +161,7 @@ namespace VideoAudioMediaPlayer
                 return;
             }
 
-            if(_mediaHandler.Length > 30)
+            if(_mediaHandler.Length > 90)
                 return;
 
             Task.Run(() =>
