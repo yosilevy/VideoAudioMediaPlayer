@@ -47,6 +47,7 @@ namespace VideoAudioMediaPlayer
             waveformPictureBox.TabIndex = 1;
             waveformPictureBox.TabStop = false;
             waveformPictureBox.MouseClick += WaveformPictureBox_MouseClick;
+            waveformPictureBox.MouseDoubleClick += waveformPictureBox_MouseDoubleClick;
             // 
             // videoWebView
             // 

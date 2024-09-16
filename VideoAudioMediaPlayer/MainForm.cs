@@ -161,8 +161,20 @@ namespace VideoAudioMediaPlayer
                 return;
             }
 
-            if(_mediaHandler.Length > 90)
+            if (_mediaHandler.Length > 90)
                 return;
+
+            HandleWaveform();
+        }
+
+        bool waveFormShown = false;
+
+        private void HandleWaveform()
+        {
+            if (waveFormShown)
+                return;
+
+            waveFormShown = true;
 
             Task.Run(() =>
             {
@@ -334,6 +346,11 @@ namespace VideoAudioMediaPlayer
                     ? $" - {ToMins(time.Value)} of {ToMins(_mediaHandler.Length)}"
                     : ""
                     );
+        }
+
+        private void waveformPictureBox_MouseDoubleClick(object sender, MouseEventArgs e)
+        {
+            HandleWaveform();
         }
     }
 }
