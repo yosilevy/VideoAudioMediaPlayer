@@ -173,7 +173,7 @@ namespace VideoAudioMediaPlayer
         {
             if (waveFormShown)
                 return;
-
+            
             waveFormShown = true;
 
             Task.Run(() =>
