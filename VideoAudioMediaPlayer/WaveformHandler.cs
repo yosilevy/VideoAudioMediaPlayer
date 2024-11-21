@@ -53,14 +53,48 @@ namespace VideoAudioMediaPlayer
             Bitmap tempImage = new Bitmap(pictureBox.Width, pictureBox.Height);
             using (Graphics g = Graphics.FromImage(tempImage))
             {
+                // Draw the waveform image or default line
                 if (waveformImage != null)
                     g.DrawImage(waveformImage, new Rectangle(0, 0, pictureBox.Width, pictureBox.Height));
                 else
                     g.DrawLine(Pens.White, new Point(0, pictureBox.Height / 2), new Point(pictureBox.Width, pictureBox.Height / 2));
 
+                // Draw the green position indicator line
                 double positionRatio = (double)mediaTime / mediaLength;
                 int x = (int)(positionRatio * pictureBox.Width);
                 g.DrawLine(Pens.Green, x, 0, x, pictureBox.Height);
+
+                // Draw the yellow timeline if mediaLength is greater than or equal to 20
+                if (mediaLength >= 20)
+                {
+                    int timelineY = pictureBox.Height / 2;
+                    g.DrawLine(Pens.Yellow, 0, timelineY, pictureBox.Width, timelineY); // Horizontal timeline
+
+                    double interval = mediaLength < 60 ? 10 : 30; // Time intervals
+                    for (double t = interval; t <= mediaLength; t += interval)
+                    {
+                        double tRatio = t / mediaLength;
+                        int tickX = (int)(tRatio * pictureBox.Width);
+
+                        // Determine if it's a major or minor tick
+                        bool isMajorTick = mediaLength >= 60 && ((t % 60) == 0);
+
+                        // Draw the tick mark
+                        int tickHeight = isMajorTick ? 10 : 5; // Major ticks are taller
+                        g.DrawLine(Pens.Yellow, tickX, timelineY - tickHeight, tickX, timelineY + tickHeight);
+
+                        // Draw labels only for major ticks
+                        if (isMajorTick || mediaLength < 60)
+                        {
+                            string label = mediaLength < 60 ? $"{(int)t}s" : TimeSpan.FromSeconds(t).ToString(@"mm\:ss");
+                            SizeF labelSize = g.MeasureString(label, SystemFonts.DefaultFont); // Measure label size
+                            int labelX = tickX - (int)(labelSize.Width / 2); // Center label around the tick
+                            int labelY = timelineY + tickHeight + 5; // Move label further down for major ticks
+
+                            g.DrawString(label, SystemFonts.DefaultFont, Brushes.Yellow, labelX, labelY);
+                        }
+                    }
+                }
             }
 
             pictureBox.Image = tempImage;

@@ -25,7 +25,6 @@ namespace VideoAudioMediaPlayer
         private double[] peakSeconds;
         private string lastFile;
         private double lastGain = 1;
-        private bool initialPlay = false;
 
         public MainForm()
         {
@@ -126,7 +125,7 @@ namespace VideoAudioMediaPlayer
             {
                 // Debug example file
                 //PlayFile("C:\\Users\\JosephLevy\\Videos\\04M22S_1710605062.mp4");
-                PlayFile("C:\\Users\\JosephLevy\\Desktop\\Desktop\\אדם\\RDI\\סרטים שהוגשו\\סרטים 232\\1.mp4");
+                PlayFile("C:\\Users\\JosephLevy\\Desktop\\Desktop\\אדם\\RDI\\סרטים שהוגשו\\סרטים 240\\3.mp4");
             }
         }
 
@@ -138,7 +137,7 @@ namespace VideoAudioMediaPlayer
                 return;
             }
 
-            initialPlay = true;
+            waveFormShown = false;
 
             lastFile = file;
             lastGain = 1;
