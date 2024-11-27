@@ -60,7 +60,7 @@ namespace VideoAudioMediaPlayer
                     g.DrawLine(Pens.White, new Point(0, pictureBox.Height / 2), new Point(pictureBox.Width, pictureBox.Height / 2));
 
                 // Draw the green position indicator line
-                double positionRatio = (double)mediaTime / mediaLength;
+                double positionRatio = mediaTime / mediaLength;
                 int x = (int)(positionRatio * pictureBox.Width);
                 g.DrawLine(Pens.Green, x, 0, x, pictureBox.Height);
 
@@ -70,27 +70,45 @@ namespace VideoAudioMediaPlayer
                     int timelineY = pictureBox.Height / 2;
                     g.DrawLine(Pens.Yellow, 0, timelineY, pictureBox.Width, timelineY); // Horizontal timeline
 
-                    double interval = mediaLength < 60 ? 10 : 30; // Time intervals
-                    for (double t = interval; t <= mediaLength; t += interval)
-                    {
-                        double tRatio = t / mediaLength;
-                        int tickX = (int)(tRatio * pictureBox.Width);
+                    // Calculate maximum number of ticks that fit without overlapping labels
+                    SizeF maxLabelSize = g.MeasureString(TimeSpan.FromSeconds(mediaLength).ToString(@"mm\:ss"), SystemFonts.DefaultFont);
+                    int minSpacing = (int)(maxLabelSize.Width * 1.2); // Minimum spacing (label width + 20%)
+                    int maxTicks = pictureBox.Width / minSpacing;
 
-                        // Determine if it's a major or minor tick
-                        bool isMajorTick = mediaLength >= 60 && ((t % 60) == 0);
+                    // Ensure at least 2 ticks (start and end)
+                    maxTicks = Math.Max(2, maxTicks);
+
+                    // Calculate the time interval between ticks
+                    double interval = mediaLength / (maxTicks - 1);
+
+                    for (int i = 0; i < maxTicks; i++)
+                    {
+                        double t = i * interval; // Current time for this tick
+                        int tickX = (int)((t / mediaLength) * pictureBox.Width);
 
                         // Draw the tick mark
-                        int tickHeight = isMajorTick ? 10 : 5; // Major ticks are taller
-                        g.DrawLine(Pens.Yellow, tickX, timelineY - tickHeight, tickX, timelineY + tickHeight);
+                        g.DrawLine(Pens.Yellow, tickX, timelineY - 5, tickX, timelineY + 5);
 
-                        // Draw labels only for major ticks
-                        if (isMajorTick || mediaLength < 60)
+                        // Draw the label
+                        string label = TimeSpan.FromSeconds(t).ToString(@"mm\:ss");
+                        SizeF labelSize = g.MeasureString(label, SystemFonts.DefaultFont);
+
+                        if (i == 0) // First label (aligned to start and above the timeline)
                         {
-                            string label = mediaLength < 60 ? $"{(int)t}s" : TimeSpan.FromSeconds(t).ToString(@"mm\:ss");
-                            SizeF labelSize = g.MeasureString(label, SystemFonts.DefaultFont); // Measure label size
-                            int labelX = tickX - (int)(labelSize.Width / 2); // Center label around the tick
-                            int labelY = timelineY + tickHeight + 5; // Move label further down for major ticks
-
+                            int labelX = 0; // Align to the left
+                            int labelY = waveformImage != null ? 5 : timelineY - (int)labelSize.Height - 5; // Above the timeline
+                            g.DrawString(label, SystemFonts.DefaultFont, Brushes.Yellow, labelX, labelY);
+                        }
+                        else if (i == maxTicks - 1) // Last label (aligned to end and above the timeline)
+                        {
+                            int labelX = pictureBox.Width - (int)labelSize.Width; // Align to the right
+                            int labelY = waveformImage != null ? 5 : timelineY - (int)labelSize.Height - 5; // Above the timeline
+                            g.DrawString(label, SystemFonts.DefaultFont, Brushes.Yellow, labelX, labelY);
+                        }
+                        else // Intermediate labels (centered and below the timeline)
+                        {
+                            int labelX = tickX - (int)(labelSize.Width / 2); // Center label under the tick
+                            int labelY = waveformImage != null ? pictureBox.Height - (int)labelSize.Height - 5 : timelineY + 8; // Below the timeline
                             g.DrawString(label, SystemFonts.DefaultFont, Brushes.Yellow, labelX, labelY);
                         }
                     }
