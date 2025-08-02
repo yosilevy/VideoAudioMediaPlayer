@@ -28,6 +28,7 @@ namespace VideoAudioMediaPlayer
         private double videoDuration = 0;
         private double videoTime = 0;
         private double seekStep = 8; // seconds
+        private double seekStepSmall = 8; // seconds
         private double targetSeekTime;
         private int targetSeekDirection;
         private double seekFromTime;
@@ -101,6 +102,7 @@ namespace VideoAudioMediaPlayer
 
                         string key = payload.RootElement.GetProperty("key").GetString();
                         bool shiftKey = payload.RootElement.GetProperty("shiftKey").GetBoolean();
+                        bool ctrlKey = payload.RootElement.GetProperty("ctrlKey").GetBoolean();
 
                         // raise event
                         VideoPlayerKeyDown?.Invoke(sender, new VideoPlayerKeyDownEventArgs(key, shiftKey, ctrlKey));
@@ -113,6 +115,8 @@ namespace VideoAudioMediaPlayer
                         var payload = System.Text.Json.JsonDocument.Parse(message.RootElement.GetProperty("data").ToString());
 
                         this.videoDuration = payload.RootElement.GetProperty("duration").GetDouble();
+                        this.seekStep = this.videoDuration / 10;
+                        this.seekStepSmall = this.videoDuration / 25;
 
                         // raise event
                         DurationKnown?.Invoke(sender, new EventArgs());
@@ -171,11 +175,13 @@ namespace VideoAudioMediaPlayer
             _videoView.CoreWebView2.ExecuteScriptAsync("playPauseVideo()");
         }
 
-        public void SeekForwardStep(double mediaTime)
+        public void SeekForwardStep(double mediaTime, bool smallStep = false)
         {
-            if (mediaTime < videoDuration - seekStep)
+            double stepSize = smallStep ? seekStepSmall : seekStep;
+
+            if (mediaTime < videoDuration - stepSize)
             {
-                double targetTime = mediaTime + seekStep;
+                double targetTime = mediaTime + stepSize;
                 targetSeekDirection = 0;
                 targetSeekTime = targetTime;
                 targetSeekDirection = 1;
@@ -185,11 +191,13 @@ namespace VideoAudioMediaPlayer
             }
         }
 
-        public void SeekBackwardStep(double mediaTime)
+        public void SeekBackwardStep(double mediaTime, bool smallStep = false)
         {
-            if (mediaTime > seekStep)
+            double stepSize = smallStep ? seekStepSmall : seekStep;
+
+            if (mediaTime > stepSize)
             {
-                double targetTime = mediaTime - seekStep;
+                double targetTime = mediaTime - stepSize;
                 targetSeekDirection = 0;
                 targetSeekTime = targetTime;
                 targetSeekDirection = -1;

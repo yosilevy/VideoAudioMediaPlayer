@@ -19,10 +19,13 @@ namespace VideoAudioMediaPlayer
 
         public bool ShiftKey;
 
-        public VideoPlayerKeyDownEventArgs(string key, bool shiftKey)
+        public bool CtrlKey;
+
+        public VideoPlayerKeyDownEventArgs(string key, bool shiftKey, bool ctrlKey)
         {
             this.Key = key;
             this.ShiftKey = shiftKey;
+            this.CtrlKey = ctrlKey;
         }
     }
 }

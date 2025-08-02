@@ -33,6 +33,7 @@ namespace VideoAudioMediaPlayer
             components = new System.ComponentModel.Container();
             playbackTimer = new System.Windows.Forms.Timer(components);
             waveformPictureBox = new PictureBox();
+            infoListBox = new System.Windows.Forms.ListBox();
             videoWebView = new Microsoft.Web.WebView2.WinForms.WebView2();
             ((System.ComponentModel.ISupportInitialize)waveformPictureBox).BeginInit();
             ((System.ComponentModel.ISupportInitialize)videoWebView).BeginInit();
@@ -49,6 +50,15 @@ namespace VideoAudioMediaPlayer
             waveformPictureBox.MouseClick += WaveformPictureBox_MouseClick;
             waveformPictureBox.MouseDoubleClick += waveformPictureBox_MouseDoubleClick;
             // 
+            // infoListBox
+            // 
+            infoListBox.Dock = DockStyle.Right;
+            infoListBox.Width = 500;
+            infoListBox.Name = "infoListBox";
+            infoListBox.TabIndex = 0;
+            infoListBox.TabStop = false;
+            infoListBox.SelectedIndexChanged += InfoListBox_SelectedIndexChanged;
+            // 
             // videoWebView
             // 
             videoWebView.AllowExternalDrop = true;
@@ -57,8 +67,8 @@ namespace VideoAudioMediaPlayer
             videoWebView.Dock = DockStyle.Fill;
             videoWebView.Location = new Point(0, 0);
             videoWebView.Name = "videoWebView";
-            videoWebView.Size = new Size(1662, 772);
-            videoWebView.TabIndex = 6;
+            videoWebView.Size = new Size(1162, 772);
+            videoWebView.TabIndex = 7;
             videoWebView.ZoomFactor = 1D;
             // 
             // MainForm
@@ -70,6 +80,7 @@ namespace VideoAudioMediaPlayer
             BackgroundImageLayout = ImageLayout.Stretch;
             ClientSize = new Size(1662, 952);
             Controls.Add(videoWebView);
+            Controls.Add(infoListBox);
             Controls.Add(waveformPictureBox);
             KeyPreview = true;
             Name = "MainForm";
@@ -87,6 +98,7 @@ namespace VideoAudioMediaPlayer
         #endregion
         private System.Windows.Forms.Timer playbackTimer;
         private PictureBox waveformPictureBox;
+        private System.Windows.Forms.ListBox infoListBox;
         private Microsoft.Web.WebView2.WinForms.WebView2 videoWebView;
     }
 }

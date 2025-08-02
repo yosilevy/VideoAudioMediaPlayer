@@ -2,10 +2,12 @@
 var progressUpdateFrequency;
 var progressUpdater;
 var duration;
+var timeDisplay;
 
 // init variable and events
 function initVideoHandler(videoFile, reqProgressUpdateFrequency) {
     videoPlayer = document.getElementById('videoPlayer');
+    timeDisplay = document.getElementById('timeDisplay');
 
     // when video loaded - report duration
     videoPlayer.addEventListener('canplaythrough', function (e) {
@@ -13,11 +15,11 @@ function initVideoHandler(videoFile, reqProgressUpdateFrequency) {
         }, { once: true });
 
     document.body.addEventListener('keydown', function (e) {
-        postMessageToHost("keyDown", { key: e.key, shiftKey: e.shiftKey });
+        postMessageToHost("keyDown", { key: e.key, shiftKey: e.shiftKey, ctrlKey: e.ctrlKey });
     });
     document.body.addEventListener('click', function (e) {
         // simulate a keydown to space
-        postMessageToHost("keyDown", { key: " ", shiftKey: false });
+        postMessageToHost("keyDown", { key: " ", shiftKey: false, ctrlKey: false });
     });
 
     if (reqProgressUpdateFrequency == null || reqProgressUpdateFrequency == 0)
@@ -65,7 +67,16 @@ function seekToTime(time) {
 function updateCurrentTime() {
     var currentTime = videoPlayer.currentTime;
     var duration = videoPlayer.duration;
+
     postMessageToHost("currentTime", { currentTime: currentTime, duration: duration });
+
+    var dateObj = new Date(currentTime * 1000);
+    hours = dateObj.getUTCHours();
+    minutes = dateObj.getUTCMinutes();
+    seconds = dateObj.getSeconds();
+    timeDisplay.innerText = hours.toString().padStart(2, '0') + ':' +
+        minutes.toString().padStart(2, '0') + ':' +
+        seconds.toString().padStart(2, '0');
 }
 
 // sets volume gain

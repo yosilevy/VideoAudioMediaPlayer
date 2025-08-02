@@ -125,7 +125,7 @@ namespace VideoAudioMediaPlayer
             {
                 // Debug example file
                 //PlayFile("C:\\Users\\JosephLevy\\Videos\\04M22S_1710605062.mp4");
-                PlayFile("C:\\Users\\JosephLevy\\Desktop\\Desktop\\אדם\\RDI\\סרטים שהוגשו\\סרטים 232\\1.mp4");
+                PlayFile("C:\\Users\\JosephLevy\\Videos\\From nas\\xiaomi_camera_videos\\607ea4123be4\\2025072209\\00M58S_1753164058.mp4");
             }
         }
 
@@ -145,11 +145,37 @@ namespace VideoAudioMediaPlayer
             displayFileName = Path.GetFileName(file);
             setFormText(displayFileName);
 
+            // Load associated .txt file into infoListView
+            LoadInfoListForVideo(file);
+
             // load new video
             _mediaHandler.Load(file);
 
             // bring to front and focus windows
             WindowsInteropConnector.FocusAndForegroundForm(this);
+        }
+
+        private void LoadInfoListForVideo(string videoFilePath)
+        {
+            if (infoListBox.InvokeRequired)
+            {
+                infoListBox.Invoke((MethodInvoker)delegate { LoadInfoListForVideo(videoFilePath); });
+                return;
+            }
+            infoListBox.Items.Clear();
+            string txtFile = Path.ChangeExtension(videoFilePath, ".txt");
+            if (File.Exists(txtFile))
+            {
+                var lines = File.ReadAllLines(txtFile);
+                if (lines.Length > 1)
+                {
+                    for (int i = 1; i < lines.Length; i++)
+                    {
+                        if (!string.IsNullOrWhiteSpace(lines[i]))
+                            infoListBox.Items.Add(lines[i]);
+                    }
+                }
+            }
         }
 
         private void OnVideoPlayerDurationKnown(object? sender, EventArgs e)
@@ -172,7 +198,7 @@ namespace VideoAudioMediaPlayer
         {
             if (waveFormShown)
                 return;
-            
+
             waveFormShown = true;
 
             Task.Run(() =>
@@ -236,10 +262,19 @@ namespace VideoAudioMediaPlayer
 
                     break;
 
+                case "-":
+                    lastGain -= 1;
+
+                    // double down the volume
+                    _mediaHandler.SetGain(lastGain);
+                    _mediaHandler.Play();
+
+                    break;
+
                 case "ArrowRight":
                     if (!e.ShiftKey)
                     {
-                        _mediaHandler.SeekForwardStep(mediaTime);
+                        _mediaHandler.SeekForwardStep(mediaTime, e.CtrlKey);
                     }
                     else
                     {
@@ -254,7 +289,7 @@ namespace VideoAudioMediaPlayer
                 case "ArrowLeft":
                     if (!e.ShiftKey)
                     {
-                        _mediaHandler.SeekBackwardStep(mediaTime);
+                        _mediaHandler.SeekBackwardStep(mediaTime, e.CtrlKey);
                     }
                     else
                     {
@@ -350,6 +385,22 @@ namespace VideoAudioMediaPlayer
         private void waveformPictureBox_MouseDoubleClick(object sender, MouseEventArgs e)
         {
             HandleWaveform();
+        }
+
+        private void InfoListBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (infoListBox.SelectedIndex == -1)
+                return;
+            string line = infoListBox.SelectedItem as string;
+            if (string.IsNullOrWhiteSpace(line))
+                return;
+            // Try to find a time in the format [xx.xx or xx.xx s]
+            var match = System.Text.RegularExpressions.Regex.Match(line, @"\[(?<start>[0-9]+\.?[0-9]*)s? *->");
+            if (match.Success && double.TryParse(match.Groups["start"].Value, out double seconds))
+            {
+                // seek to a bit before
+                _mediaHandler.SeekTo(Math.Max(0, seconds - 2));
+            }
         }
     }
 }
