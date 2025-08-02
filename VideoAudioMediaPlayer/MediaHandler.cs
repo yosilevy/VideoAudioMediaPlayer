@@ -103,7 +103,7 @@ namespace VideoAudioMediaPlayer
                         bool shiftKey = payload.RootElement.GetProperty("shiftKey").GetBoolean();
 
                         // raise event
-                        VideoPlayerKeyDown?.Invoke(sender, new VideoPlayerKeyDownEventArgs(key, shiftKey));
+                        VideoPlayerKeyDown?.Invoke(sender, new VideoPlayerKeyDownEventArgs(key, shiftKey, ctrlKey));
                     }
 
                     break;
