@@ -25,12 +25,20 @@ namespace VideoAudioMediaPlayer
         private double[] peakSeconds;
         private string lastFile;
         private double lastGain = 1;
+        private List<double> transcriptionFragmentsStartTimes;
+        private int currentTranscriptionLineIndex = -1;
 
         public MainForm()
         {
             InitializeComponent();
             LoadSettings();
             InitializeHandlers();
+
+            // Attach handler for list box item click
+            transcriptionListBox.SelectedIndexChanged += TranscriptionListBox_SelectedIndexChanged;
+
+            // Attach handler for splitter movement
+            mainSplitContainer.SplitterMoved += MainSplitContainer_SplitterMoved;
 
             // debugging...
             //Trace.Listeners.Add(new TextWriterTraceListener(Path.Combine(Application.StartupPath, "log.txt"), "logger"));
@@ -124,8 +132,8 @@ namespace VideoAudioMediaPlayer
             else
             {
                 // Debug example file
-                //PlayFile("C:\\Users\\JosephLevy\\Videos\\04M22S_1710605062.mp4");
-                PlayFile("C:\\Users\\JosephLevy\\Videos\\From nas\\xiaomi_camera_videos\\607ea4123be4\\2025072209\\00M58S_1753164058.mp4");
+                PlayFile("C:\\Users\\JosephLevy\\Videos\\מזיז את היד.mp4");
+                //PlayFile("C:\\Users\\JosephLevy\\Videos\\From nas\\xiaomi_camera_videos\\607ea4123be4\\2025072209\\00M58S_1753164058.mp4");
             }
         }
 
@@ -145,8 +153,8 @@ namespace VideoAudioMediaPlayer
             displayFileName = Path.GetFileName(file);
             setFormText(displayFileName);
 
-            // Load associated .txt file into infoListView
-            LoadInfoListForVideo(file);
+            // Load associated .txt file into transcriptionListBox
+            LoadTranscriptionForVideo(file);
 
             // load new video
             _mediaHandler.Load(file);
@@ -155,24 +163,51 @@ namespace VideoAudioMediaPlayer
             WindowsInteropConnector.FocusAndForegroundForm(this);
         }
 
-        private void LoadInfoListForVideo(string videoFilePath)
+        private void LoadTranscriptionForVideo(string videoFilePath)
         {
-            if (infoListBox.InvokeRequired)
+            if (transcriptionListBox.InvokeRequired)
             {
-                infoListBox.Invoke((MethodInvoker)delegate { LoadInfoListForVideo(videoFilePath); });
+                transcriptionListBox.Invoke((MethodInvoker)delegate { LoadTranscriptionForVideo(videoFilePath); });
                 return;
             }
-            infoListBox.Items.Clear();
+            transcriptionListBox.Items.Clear();
+            transcriptionFragmentsStartTimes = new List<double>();
+            currentTranscriptionLineIndex = -1;
+
             string txtFile = Path.ChangeExtension(videoFilePath, ".txt");
-            if (File.Exists(txtFile))
+
+            // First check if there's a "transcriptions" subfolder
+            string videoDirectory = Path.GetDirectoryName(videoFilePath);
+            string transcriptionsFolder = Path.Combine(videoDirectory, "transcriptions");
+            string txtFileInTranscriptions = Path.Combine(transcriptionsFolder, Path.GetFileName(txtFile));
+
+            // Use the file in transcriptions folder if it exists, otherwise use the original location
+            string finalTxtFile = Directory.Exists(transcriptionsFolder) && File.Exists(txtFileInTranscriptions)
+                ? txtFileInTranscriptions
+                : txtFile;
+
+            if (File.Exists(finalTxtFile))
             {
-                var lines = File.ReadAllLines(txtFile);
+                var lines = File.ReadAllLines(finalTxtFile);
                 if (lines.Length > 1)
                 {
                     for (int i = 1; i < lines.Length; i++)
                     {
                         if (!string.IsNullOrWhiteSpace(lines[i]))
-                            infoListBox.Items.Add(lines[i]);
+                        {
+                            transcriptionListBox.Items.Add(lines[i]);
+
+                            // Parse start time from the line
+                            var match = System.Text.RegularExpressions.Regex.Match(lines[i], @"\[(?<start>[0-9]+\.?[0-9]*)s? *->");
+                            if (match.Success && double.TryParse(match.Groups["start"].Value, out double startTime))
+                            {
+                                transcriptionFragmentsStartTimes.Add(startTime);
+                            }
+                            else
+                            {
+                                transcriptionFragmentsStartTimes.Add(-1); // No valid time found
+                            }
+                        }
                     }
                 }
             }
@@ -230,6 +265,36 @@ namespace VideoAudioMediaPlayer
             _waveformHandler.DrawWaveformWithPosition(e.Time, waveformPictureBox, _mediaHandler.Length);
 
             setFormText(displayFileName, e.Time);
+
+            // Highlight current transcription line
+            HighlightCurrentTranscriptionLine(e.Time);
+        }
+
+        private void HighlightCurrentTranscriptionLine(double currentTime)
+        {
+            if (transcriptionFragmentsStartTimes == null || transcriptionFragmentsStartTimes.Count == 0)
+                return;
+
+            // Find the current line based on time
+            int newCurrentLineIndex = -1;
+            for (int i = 0; i < transcriptionFragmentsStartTimes.Count; i++)
+            {
+                if (transcriptionFragmentsStartTimes[i] >= 0 && transcriptionFragmentsStartTimes[i] <= currentTime)
+                {
+                    newCurrentLineIndex = i;
+                }
+                else if (transcriptionFragmentsStartTimes[i] > currentTime)
+                {
+                    break;
+                }
+            }
+
+            // Update current line index if different
+            if (currentTranscriptionLineIndex != newCurrentLineIndex)
+            {
+                currentTranscriptionLineIndex = newCurrentLineIndex;
+                transcriptionListBox.Invalidate(); // Trigger redraw
+            }
         }
 
         private string ToMins(double seconds)
@@ -240,9 +305,39 @@ namespace VideoAudioMediaPlayer
 
         private void OnVideoPlayerKeyDown(object? sender, VideoPlayerKeyDownEventArgs e)
         {
+            // e.Key is already normalized ("ArrowRight", "Enter", etc.)
+            HandleMediaKeyDown(e.Key, e.ShiftKey, e.CtrlKey);
+        }
+
+        private void MainForm_KeyDown(object sender, KeyEventArgs e)
+        {
+            // Normalize Keys to string for HandleMediaKeyDown
+#pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
+            string key = e.KeyData switch
+            {
+                Keys.OemQuestion => "?",
+                Keys.Space => " ",
+                Keys.Enter => "Enter",
+                Keys.Add => "+",
+                Keys.Subtract => "-",
+                Keys.Right => "ArrowRight",
+                Keys.Left => "ArrowLeft",
+                _ => null
+            };
+#pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
+
+            if (key != null)
+            {
+                HandleMediaKeyDown(key, e.Shift, e.Control);
+            }
+        }
+
+        // Add this new method to MainForm
+        private void HandleMediaKeyDown(string key, bool shift, bool ctrl)
+        {
             var mediaTime = _mediaHandler.Time;
 
-            switch (e.Key)
+            switch (key)
             {
                 case "?":
                     _mediaHandler.ShowHelp();
@@ -255,26 +350,20 @@ namespace VideoAudioMediaPlayer
 
                 case "+":
                     lastGain += 1;
-
-                    // double the volume
                     _mediaHandler.SetGain(lastGain);
                     _mediaHandler.Play();
-
                     break;
 
                 case "-":
                     lastGain -= 1;
-
-                    // double down the volume
                     _mediaHandler.SetGain(lastGain);
                     _mediaHandler.Play();
-
                     break;
 
                 case "ArrowRight":
-                    if (!e.ShiftKey)
+                    if (!shift)
                     {
-                        _mediaHandler.SeekForwardStep(mediaTime, e.CtrlKey);
+                        _mediaHandler.SeekForwardStep(mediaTime, ctrl);
                     }
                     else
                     {
@@ -287,9 +376,9 @@ namespace VideoAudioMediaPlayer
                     break;
 
                 case "ArrowLeft":
-                    if (!e.ShiftKey)
+                    if (!shift)
                     {
-                        _mediaHandler.SeekBackwardStep(mediaTime, e.CtrlKey);
+                        _mediaHandler.SeekBackwardStep(mediaTime, ctrl);
                     }
                     else
                     {
@@ -350,6 +439,11 @@ namespace VideoAudioMediaPlayer
                 if (this.Size.Height < 400 || this.Size.Width < 400)
                     this.Size = new Size(800, 600);
             }
+
+            // Load ListBox width
+            int listBoxWidth = Settings.Default.InfoListBoxWidth;
+            if (listBoxWidth < 500) listBoxWidth = 500; // Ensure minimum width
+            mainSplitContainer.SplitterDistance = mainSplitContainer.Width - listBoxWidth;
         }
 
         private void SavePosition()
@@ -364,6 +458,11 @@ namespace VideoAudioMediaPlayer
             {
                 Settings.Default.WindowSize = this.RestoreBounds.Size;
             }
+
+            // Save ListBox width
+            int listBoxWidth = mainSplitContainer.Width - mainSplitContainer.SplitterDistance;
+            if (listBoxWidth < 500) listBoxWidth = 500; // Ensure minimum width
+            Settings.Default.InfoListBoxWidth = listBoxWidth;
 
             Settings.Default.Save();
         }
@@ -387,11 +486,11 @@ namespace VideoAudioMediaPlayer
             HandleWaveform();
         }
 
-        private void InfoListBox_SelectedIndexChanged(object sender, EventArgs e)
+        private void TranscriptionListBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if (infoListBox.SelectedIndex == -1)
+            if (transcriptionListBox.SelectedIndex == -1)
                 return;
-            string line = infoListBox.SelectedItem as string;
+            string line = transcriptionListBox.SelectedItem as string;
             if (string.IsNullOrWhiteSpace(line))
                 return;
             // Try to find a time in the format [xx.xx or xx.xx s]
@@ -401,6 +500,84 @@ namespace VideoAudioMediaPlayer
                 // seek to a bit before
                 _mediaHandler.SeekTo(Math.Max(0, seconds - 2));
             }
+        }
+
+        private void TranscriptionListBox_DrawItem(object sender, DrawItemEventArgs e)
+        {
+            if (e.Index < 0) return;
+
+            e.DrawBackground();
+
+            // Determine colors based on item state
+            Color backgroundColor;
+            Color textColor;
+
+            if (e.Index == currentTranscriptionLineIndex)
+            {
+                // Current line (highlighted)
+                backgroundColor = Color.LightBlue;
+                textColor = Color.Black;
+            }
+            else if ((e.State & DrawItemState.Selected) == DrawItemState.Selected)
+            {
+                // Selected by user
+                backgroundColor = Color.DarkBlue;
+                textColor = Color.White;
+            }
+            else
+            {
+                // Normal
+                backgroundColor = Color.White;
+                textColor = Color.Black;
+            }
+
+            // Fill background
+            using (var brush = new SolidBrush(backgroundColor))
+            {
+                e.Graphics.FillRectangle(brush, e.Bounds);
+            }
+
+            // Draw text
+            if (e.Index < transcriptionListBox.Items.Count)
+            {
+                string text = transcriptionListBox.Items[e.Index].ToString();
+                using (var brush = new SolidBrush(textColor))
+                {
+                    e.Graphics.DrawString(text, e.Font, brush, e.Bounds);
+                }
+            }
+
+            e.DrawFocusRectangle();
+        }
+
+        private void MainSplitContainer_SplitterMoved(object sender, SplitterEventArgs e)
+        {
+            // Calculate ListBox width (total width minus splitter distance)
+            int listBoxWidth = mainSplitContainer.Width - mainSplitContainer.SplitterDistance;
+
+            // Ensure minimum width of 500px
+            if (listBoxWidth < 500)
+            {
+                mainSplitContainer.SplitterDistance = mainSplitContainer.Width - 500;
+                listBoxWidth = 500;
+            }
+
+            // Save the width
+            Settings.Default.InfoListBoxWidth = listBoxWidth;
+            Settings.Default.Save();
+        }
+
+        private void TranscriptionListBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            // Handle special keys if needed
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+        }
+
+        private void TranscriptionListBox_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            // Ignore key presses
+            e.Handled = true;
         }
     }
 }

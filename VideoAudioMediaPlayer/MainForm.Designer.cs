@@ -33,9 +33,14 @@ namespace VideoAudioMediaPlayer
             components = new System.ComponentModel.Container();
             playbackTimer = new System.Windows.Forms.Timer(components);
             waveformPictureBox = new PictureBox();
-            infoListBox = new System.Windows.Forms.ListBox();
+            mainSplitContainer = new SplitContainer();
             videoWebView = new Microsoft.Web.WebView2.WinForms.WebView2();
+            transcriptionListBox = new ListBox();
             ((System.ComponentModel.ISupportInitialize)waveformPictureBox).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)mainSplitContainer).BeginInit();
+            mainSplitContainer.Panel1.SuspendLayout();
+            mainSplitContainer.Panel2.SuspendLayout();
+            mainSplitContainer.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)videoWebView).BeginInit();
             SuspendLayout();
             // 
@@ -50,14 +55,22 @@ namespace VideoAudioMediaPlayer
             waveformPictureBox.MouseClick += WaveformPictureBox_MouseClick;
             waveformPictureBox.MouseDoubleClick += waveformPictureBox_MouseDoubleClick;
             // 
-            // infoListBox
+            // mainSplitContainer
             // 
-            infoListBox.Dock = DockStyle.Right;
-            infoListBox.Width = 500;
-            infoListBox.Name = "infoListBox";
-            infoListBox.TabIndex = 0;
-            infoListBox.TabStop = false;
-            infoListBox.SelectedIndexChanged += InfoListBox_SelectedIndexChanged;
+            mainSplitContainer.Dock = DockStyle.Fill;
+            mainSplitContainer.Location = new Point(0, 0);
+            mainSplitContainer.Name = "mainSplitContainer";
+            // 
+            // mainSplitContainer.Panel1
+            // 
+            mainSplitContainer.Panel1.Controls.Add(videoWebView);
+            // 
+            // mainSplitContainer.Panel2
+            // 
+            mainSplitContainer.Panel2.Controls.Add(transcriptionListBox);
+            mainSplitContainer.Size = new Size(1662, 772);
+            mainSplitContainer.SplitterDistance = 1162;
+            mainSplitContainer.TabIndex = 8;
             // 
             // videoWebView
             // 
@@ -71,6 +84,20 @@ namespace VideoAudioMediaPlayer
             videoWebView.TabIndex = 7;
             videoWebView.ZoomFactor = 1D;
             // 
+            // transcriptionListBox
+            // 
+            transcriptionListBox.Dock = DockStyle.Fill;
+            transcriptionListBox.DrawMode = DrawMode.OwnerDrawFixed;
+            transcriptionListBox.Location = new Point(0, 0);
+            transcriptionListBox.Name = "transcriptionListBox";
+            transcriptionListBox.Size = new Size(496, 772);
+            transcriptionListBox.TabIndex = 0;
+            transcriptionListBox.TabStop = false;
+            transcriptionListBox.DrawItem += TranscriptionListBox_DrawItem;
+            transcriptionListBox.SelectedIndexChanged += TranscriptionListBox_SelectedIndexChanged;
+            transcriptionListBox.KeyDown += TranscriptionListBox_KeyDown;
+            transcriptionListBox.KeyPress += TranscriptionListBox_KeyPress;
+            // 
             // MainForm
             // 
             AllowDrop = true;
@@ -79,8 +106,7 @@ namespace VideoAudioMediaPlayer
             BackColor = SystemColors.Desktop;
             BackgroundImageLayout = ImageLayout.Stretch;
             ClientSize = new Size(1662, 952);
-            Controls.Add(videoWebView);
-            Controls.Add(infoListBox);
+            Controls.Add(mainSplitContainer);
             Controls.Add(waveformPictureBox);
             KeyPreview = true;
             Name = "MainForm";
@@ -90,7 +116,12 @@ namespace VideoAudioMediaPlayer
             Load += MainForm_Load;
             DragDrop += MainForm_DragDrop;
             DragEnter += MainForm_DragEnter;
+            KeyDown += MainForm_KeyDown;
             ((System.ComponentModel.ISupportInitialize)waveformPictureBox).EndInit();
+            mainSplitContainer.Panel1.ResumeLayout(false);
+            mainSplitContainer.Panel2.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)mainSplitContainer).EndInit();
+            mainSplitContainer.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)videoWebView).EndInit();
             ResumeLayout(false);
         }
@@ -98,7 +129,8 @@ namespace VideoAudioMediaPlayer
         #endregion
         private System.Windows.Forms.Timer playbackTimer;
         private PictureBox waveformPictureBox;
-        private System.Windows.Forms.ListBox infoListBox;
+        private System.Windows.Forms.SplitContainer mainSplitContainer;
+        private System.Windows.Forms.ListBox transcriptionListBox;
         private Microsoft.Web.WebView2.WinForms.WebView2 videoWebView;
     }
 }
