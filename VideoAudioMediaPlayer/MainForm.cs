@@ -186,6 +186,7 @@ namespace VideoAudioMediaPlayer
                 ? txtFileInTranscriptions
                 : txtFile;
 
+            bool found = false;
             if (File.Exists(finalTxtFile))
             {
                 var lines = File.ReadAllLines(finalTxtFile);
@@ -209,8 +210,11 @@ namespace VideoAudioMediaPlayer
                             }
                         }
                     }
+                    found = transcriptionListBox.Items.Count > 0;
                 }
             }
+            transcriptionListBox.Visible = found;
+            mainSplitContainer.Panel2Collapsed = !found;
         }
 
         private void OnVideoPlayerDurationKnown(object? sender, EventArgs e)
@@ -569,6 +573,12 @@ namespace VideoAudioMediaPlayer
 
         private void TranscriptionListBox_KeyDown(object sender, KeyEventArgs e)
         {
+            // Allow ALT+F4 to close the app
+            if (e.KeyCode == Keys.F4 && e.Alt)
+            {
+                // Do not suppress ALT+F4
+                return;
+            }
             // Handle special keys if needed
             e.Handled = true;
             e.SuppressKeyPress = true;
