@@ -40,6 +40,9 @@ namespace VideoAudioMediaPlayer
             // Attach handler for splitter movement
             mainSplitContainer.SplitterMoved += MainSplitContainer_SplitterMoved;
 
+            transcriptionListBox.DrawMode = DrawMode.OwnerDrawVariable;
+            transcriptionListBox.MeasureItem += TranscriptionListBox_MeasureItem;
+
             // debugging...
             //Trace.Listeners.Add(new TextWriterTraceListener(Path.Combine(Application.StartupPath, "log.txt"), "logger"));
             //Trace.AutoFlush = true;
@@ -132,7 +135,8 @@ namespace VideoAudioMediaPlayer
             else
             {
                 // Debug example file
-                PlayFile("C:\\Users\\JosephLevy\\Videos\\מזיז את היד.mp4");
+                //PlayFile("C:\\Users\\JosephLevy\\Videos\\מזיז את היד.mp4");
+                PlayFile("C:\\Users\\JosephLevy\\Videos\\2025082311\\09M14S_1755936554.mp4");
                 //PlayFile("C:\\Users\\JosephLevy\\Videos\\From nas\\xiaomi_camera_videos\\607ea4123be4\\2025072209\\00M58S_1753164058.mp4");
             }
         }
@@ -196,18 +200,23 @@ namespace VideoAudioMediaPlayer
                     {
                         if (!string.IsNullOrWhiteSpace(lines[i]))
                         {
-                            transcriptionListBox.Items.Add(lines[i]);
-
                             // Parse start time from the line
                             var match = System.Text.RegularExpressions.Regex.Match(lines[i], @"\[(?<start>[0-9]+\.?[0-9]*)s? *->");
-                            if (match.Success && double.TryParse(match.Groups["start"].Value, out double startTime))
+                            double startTime = -1;
+                            if (match.Success && double.TryParse(match.Groups["start"].Value, out double parsedStartTime))
                             {
-                                transcriptionFragmentsStartTimes.Add(startTime);
+                                startTime = parsedStartTime;
                             }
-                            else
+                            transcriptionFragmentsStartTimes.Add(startTime);
+
+                            // Remove all brackets and their contents, then trim
+                            string displayLine = System.Text.RegularExpressions.Regex.Replace(lines[i], @"\[[^\]]*\]", "").Trim();
+                            transcriptionListBox.Items.Add(new TranscriptionLine
                             {
-                                transcriptionFragmentsStartTimes.Add(-1); // No valid time found
-                            }
+                                DisplayText = displayLine,
+                                StartTime = startTime,
+                                OriginalLine = lines[i]
+                            });
                         }
                     }
                     found = transcriptionListBox.Items.Count > 0;
@@ -494,15 +503,11 @@ namespace VideoAudioMediaPlayer
         {
             if (transcriptionListBox.SelectedIndex == -1)
                 return;
-            string line = transcriptionListBox.SelectedItem as string;
-            if (string.IsNullOrWhiteSpace(line))
+            if (transcriptionListBox.Items[transcriptionListBox.SelectedIndex] is not TranscriptionLine item)
                 return;
-            // Try to find a time in the format [xx.xx or xx.xx s]
-            var match = System.Text.RegularExpressions.Regex.Match(line, @"\[(?<start>[0-9]+\.?[0-9]*)s? *->");
-            if (match.Success && double.TryParse(match.Groups["start"].Value, out double seconds))
+            if (item.StartTime >= 0)
             {
-                // seek to a bit before
-                _mediaHandler.SeekTo(Math.Max(0, seconds - 2));
+                _mediaHandler.SeekTo(Math.Max(0, item.StartTime - 1));
             }
         }
 
@@ -518,40 +523,71 @@ namespace VideoAudioMediaPlayer
 
             if (e.Index == currentTranscriptionLineIndex)
             {
-                // Current line (highlighted)
                 backgroundColor = Color.LightBlue;
                 textColor = Color.Black;
             }
             else if ((e.State & DrawItemState.Selected) == DrawItemState.Selected)
             {
-                // Selected by user
                 backgroundColor = Color.DarkBlue;
                 textColor = Color.White;
             }
             else
             {
-                // Normal
                 backgroundColor = Color.White;
                 textColor = Color.Black;
             }
 
-            // Fill background
             using (var brush = new SolidBrush(backgroundColor))
             {
                 e.Graphics.FillRectangle(brush, e.Bounds);
             }
 
-            // Draw text
+            // Draw right-aligned, wrapped text (RTL)
             if (e.Index < transcriptionListBox.Items.Count)
             {
-                string text = transcriptionListBox.Items[e.Index].ToString();
+                var item = transcriptionListBox.Items[e.Index] as TranscriptionLine;
+                string text = item?.DisplayText ?? transcriptionListBox.Items[e.Index].ToString();
                 using (var brush = new SolidBrush(textColor))
                 {
-                    e.Graphics.DrawString(text, e.Font, brush, e.Bounds);
+                    var format = new StringFormat
+                    {
+                        Alignment = StringAlignment.Near,
+                        LineAlignment = StringAlignment.Near,
+                        FormatFlags = StringFormatFlags.DirectionRightToLeft,
+                        Trimming = StringTrimming.None
+                    };
+                    Rectangle textRect = new Rectangle(e.Bounds.X + 4, e.Bounds.Y + 3, e.Bounds.Width - 8, e.Bounds.Height - 6);
+                    e.Graphics.DrawString(text, e.Font, brush, textRect, format);
                 }
             }
 
+            // Draw a fine delimiter line at the bottom of the item
+            using (var pen = new Pen(Color.LightGray, 1))
+            {
+                e.Graphics.DrawLine(pen, e.Bounds.Left, e.Bounds.Bottom - 1, e.Bounds.Right, e.Bounds.Bottom - 1);
+            }
+
             e.DrawFocusRectangle();
+        }
+
+        private void TranscriptionListBox_MeasureItem(object sender, MeasureItemEventArgs e)
+        {
+            if (e.Index < 0 || e.Index >= transcriptionListBox.Items.Count)
+                return;
+
+            string text = transcriptionListBox.Items[e.Index].ToString();
+            using (Graphics g = transcriptionListBox.CreateGraphics())
+            {
+                // Use the same rectangle width as in DrawItem
+                int width = transcriptionListBox.Width - 8;
+                SizeF size = g.MeasureString(text, transcriptionListBox.Font, width, new StringFormat
+                {
+                    Alignment = StringAlignment.Near,
+                    FormatFlags = StringFormatFlags.DirectionRightToLeft,
+                    Trimming= StringTrimming.None
+                });
+                e.ItemHeight = (int)Math.Ceiling(size.Height) + 6; // Add some padding
+            }
         }
 
         private void MainSplitContainer_SplitterMoved(object sender, SplitterEventArgs e)
@@ -589,5 +625,12 @@ namespace VideoAudioMediaPlayer
             // Ignore key presses
             e.Handled = true;
         }
+    }
+    internal class TranscriptionLine
+    {
+        public string DisplayText { get; set; }
+        public double StartTime { get; set; }
+        public string OriginalLine { get; set; }
+        public override string ToString() => DisplayText;
     }
 }

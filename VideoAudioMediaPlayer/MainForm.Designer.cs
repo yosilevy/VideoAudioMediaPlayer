@@ -64,10 +64,12 @@ namespace VideoAudioMediaPlayer
             // mainSplitContainer.Panel1
             // 
             mainSplitContainer.Panel1.Controls.Add(videoWebView);
+            mainSplitContainer.Panel1.RightToLeft = RightToLeft.Yes;
             // 
             // mainSplitContainer.Panel2
             // 
             mainSplitContainer.Panel2.Controls.Add(transcriptionListBox);
+            mainSplitContainer.Panel2.RightToLeft = RightToLeft.Yes;
             mainSplitContainer.Size = new Size(1662, 772);
             mainSplitContainer.SplitterDistance = 1162;
             mainSplitContainer.TabIndex = 8;
@@ -110,6 +112,7 @@ namespace VideoAudioMediaPlayer
             Controls.Add(waveformPictureBox);
             KeyPreview = true;
             Name = "MainForm";
+            RightToLeft = RightToLeft.Yes;
             Text = "Video & Audio Playback";
             FormClosing += MainForm_FormClosing;
             FormClosed += MainForm_FormClosed;
