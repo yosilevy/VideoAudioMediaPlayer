@@ -27,6 +27,14 @@ namespace VideoAudioMediaPlayer
         private double lastGain = 1;
         private List<double> transcriptionFragmentsStartTimes;
         private int currentTranscriptionLineIndex = -1;
+        private List<string> currentFolderFiles;
+        private int currentFolderFileIndex = -1;
+        private string currentFolderPath;
+        private static readonly HashSet<string> SupportedMediaExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ".mp4", ".m4v", ".mov", ".avi", ".mkv", ".wmv", ".flv", ".webm",
+            ".mp3", ".wav", ".aac", ".m4a", ".flac", ".ogg", ".wma"
+        };
 
         public MainForm()
         {
@@ -135,7 +143,7 @@ namespace VideoAudioMediaPlayer
             else
             {
                 // Debug example file
-                //PlayFile("C:\\Users\\JosephLevy\\Videos\\îæéæ àú äéã.mp4");
+                //PlayFile("C:\\Users\\JosephLevy\\Videos\\ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½.mp4");
                 PlayFile("C:\\Users\\JosephLevy\\Videos\\2025082311\\09M14S_1755936554.mp4");
                 //PlayFile("C:\\Users\\JosephLevy\\Videos\\From nas\\xiaomi_camera_videos\\607ea4123be4\\2025072209\\00M58S_1753164058.mp4");
             }
@@ -150,6 +158,17 @@ namespace VideoAudioMediaPlayer
             }
 
             waveFormShown = false;
+
+            // Build or reuse the folder file list for navigation
+            string fileDirectory = Path.GetDirectoryName(file);
+            if (!string.Equals(fileDirectory, currentFolderPath, StringComparison.OrdinalIgnoreCase)
+                || currentFolderFiles == null || currentFolderFiles.Count == 0)
+            {
+                RefreshFolderListing(fileDirectory);
+            }
+
+            // Track the index of the current file in the cached list
+            currentFolderFileIndex = currentFolderFiles?.FindIndex(p => string.Equals(p, file, StringComparison.OrdinalIgnoreCase)) ?? -1;
 
             lastFile = file;
             lastGain = 1;
@@ -374,6 +393,11 @@ namespace VideoAudioMediaPlayer
                     break;
 
                 case "ArrowRight":
+                    if (ctrl)
+                    {
+                        NavigateToAdjacentFile(+1);
+                        break;
+                    }
                     if (!shift)
                     {
                         _mediaHandler.SeekForwardStep(mediaTime, ctrl);
@@ -389,6 +413,11 @@ namespace VideoAudioMediaPlayer
                     break;
 
                 case "ArrowLeft":
+                    if (ctrl)
+                    {
+                        NavigateToAdjacentFile(-1);
+                        break;
+                    }
                     if (!shift)
                     {
                         _mediaHandler.SeekBackwardStep(mediaTime, ctrl);
@@ -403,6 +432,42 @@ namespace VideoAudioMediaPlayer
                     }
                     break;
             }
+        }
+
+        private static bool IsSupportedMediaFile(string path)
+        {
+            string ext = Path.GetExtension(path) ?? string.Empty;
+            return SupportedMediaExtensions.Contains(ext);
+        }
+
+        private void RefreshFolderListing(string directory)
+        {
+            currentFolderPath = directory;
+            try
+            {
+                currentFolderFiles = Directory
+                    .EnumerateFiles(currentFolderPath)
+                    .Where(IsSupportedMediaFile)
+                    .OrderBy(Path.GetFileName)
+                    .ToList();
+            }
+            catch
+            {
+                currentFolderFiles = new List<string>();
+            }
+        }
+
+        private void NavigateToAdjacentFile(int offset)
+        {
+            if (currentFolderFiles == null || currentFolderFiles.Count == 0 || currentFolderFileIndex < 0)
+                return;
+
+            int nextIndex = currentFolderFileIndex + offset;
+            if (nextIndex < 0 || nextIndex >= currentFolderFiles.Count)
+                return;
+
+            string nextPath = currentFolderFiles[nextIndex];
+            PlayFile(nextPath);
         }
 
         private void mainVideoView_Click(object sender, System.EventArgs e)
