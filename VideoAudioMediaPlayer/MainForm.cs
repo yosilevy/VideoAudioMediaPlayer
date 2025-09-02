@@ -57,6 +57,8 @@ namespace VideoAudioMediaPlayer
             //Trace.WriteLine("Startup");
         }
 
+        
+
         private void InitializeHandlers()
         {
             // init single app mechanism
@@ -372,7 +374,7 @@ namespace VideoAudioMediaPlayer
             switch (key)
             {
                 case "?":
-                    _mediaHandler.ShowHelp();
+                    ShowHelpDialog();
                     break;
 
                 case " ":
@@ -432,6 +434,24 @@ namespace VideoAudioMediaPlayer
                     }
                     break;
             }
+        }
+
+        private void ShowHelpDialog()
+        {
+            string help =
+                "Keyboard shortcuts\r\n\r\n" +
+                "Space / Enter: Play/Pause\r\n" +
+                "+ / -: Increase / Decrease volume gain\r\n" +
+                "Arrow Right: Seek forward\r\n" +
+                "Shift + Arrow Right: Jump to next peak\r\n" +
+                "Arrow Left: Seek backward\r\n" +
+                "Shift + Arrow Left: Jump to previous peak\r\n" +
+                "Ctrl + Arrow Right: Next file in folder\r\n" +
+                "Ctrl + Arrow Left: Previous file in folder\r\n" +
+                "Click waveform: Seek to clicked position\r\n" +
+                "Click transcription line: Seek near that time";
+
+            MessageBox.Show(this, help, "Help", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private static bool IsSupportedMediaFile(string path)
