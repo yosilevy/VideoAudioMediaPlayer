@@ -54,6 +54,7 @@ namespace VideoAudioMediaPlayer
             waveformPictureBox.TabStop = false;
             waveformPictureBox.MouseClick += WaveformPictureBox_MouseClick;
             waveformPictureBox.MouseDoubleClick += waveformPictureBox_MouseDoubleClick;
+            waveformPictureBox.PreviewKeyDown += waveformPictureBox_PreviewKeyDown;
             // 
             // mainSplitContainer
             // 

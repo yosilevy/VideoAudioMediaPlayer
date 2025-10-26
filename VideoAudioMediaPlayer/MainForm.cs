@@ -57,7 +57,7 @@ namespace VideoAudioMediaPlayer
             //Trace.WriteLine("Startup");
         }
 
-        
+
 
         private void InitializeHandlers()
         {
@@ -669,7 +669,7 @@ namespace VideoAudioMediaPlayer
                 {
                     Alignment = StringAlignment.Near,
                     FormatFlags = StringFormatFlags.DirectionRightToLeft,
-                    Trimming= StringTrimming.None
+                    Trimming = StringTrimming.None
                 });
                 e.ItemHeight = (int)Math.Ceiling(size.Height) + 6; // Add some padding
             }
@@ -709,6 +709,11 @@ namespace VideoAudioMediaPlayer
         {
             // Ignore key presses
             e.Handled = true;
+        }
+
+        private void waveformPictureBox_PreviewKeyDown(object sender, PreviewKeyDownEventArgs e)
+        {
+            e.IsInputKey = false;
         }
     }
     internal class TranscriptionLine
