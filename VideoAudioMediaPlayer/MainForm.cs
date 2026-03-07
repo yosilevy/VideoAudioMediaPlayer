@@ -697,10 +697,35 @@ namespace VideoAudioMediaPlayer
             // Allow ALT+F4 to close the app
             if (e.KeyCode == Keys.F4 && e.Alt)
             {
-                // Do not suppress ALT+F4
                 return;
             }
-            // Handle special keys if needed
+
+            // Handle media shortcuts
+            string key = e.KeyData switch
+            {
+                Keys.OemQuestion => "?",
+                Keys.Space => " ",
+                Keys.Enter => "Enter",
+                Keys.Add => "+",
+                Keys.Subtract => "-",
+                Keys.Right => "ArrowRight",
+                Keys.Left => "ArrowLeft",
+                Keys.Right | Keys.Control => "ArrowRight",
+                Keys.Left | Keys.Control => "ArrowLeft",
+                Keys.Right | Keys.Shift => "ArrowRight",
+                Keys.Left | Keys.Shift => "ArrowLeft",
+                _ => null
+            };
+
+            if (key != null)
+            {
+                HandleMediaKeyDown(key, e.Shift, e.Control);
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                return;
+            }
+
+            // Suppress other keys (navigation, typing, etc.)
             e.Handled = true;
             e.SuppressKeyPress = true;
         }
