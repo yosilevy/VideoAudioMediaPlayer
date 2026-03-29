@@ -45,6 +45,10 @@ namespace VideoAudioMediaPlayer
             // Attach handler for list box item click
             transcriptionListBox.SelectedIndexChanged += TranscriptionListBox_SelectedIndexChanged;
 
+            // Attach keyboard handlers for transcription list box
+            transcriptionListBox.KeyDown += TranscriptionListBox_KeyDown;
+            transcriptionListBox.KeyPress += TranscriptionListBox_KeyPress;
+
             // Attach handler for splitter movement
             mainSplitContainer.SplitterMoved += MainSplitContainer_SplitterMoved;
 
