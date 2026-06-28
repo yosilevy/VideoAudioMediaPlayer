@@ -472,13 +472,19 @@ namespace VideoAudioMediaPlayer
                 currentFolderFiles = Directory
                     .EnumerateFiles(currentFolderPath)
                     .Where(IsSupportedMediaFile)
-                    .OrderBy(Path.GetFileName)
+                    .OrderBy(f => NaturalSort(Path.GetFileName(f)))
                     .ToList();
             }
             catch
             {
                 currentFolderFiles = new List<string>();
             }
+        }
+
+        private static string NaturalSort(string text)
+        {
+            // Convert filename to a sortable format where numbers are zero-padded
+            return System.Text.RegularExpressions.Regex.Replace(text, "[0-9]+", m => m.Value.PadLeft(10, '0'));
         }
 
         private void NavigateToAdjacentFile(int offset)
