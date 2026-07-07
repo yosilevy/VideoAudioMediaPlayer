@@ -159,6 +159,53 @@ namespace VideoAudioMediaPlayer
             minAudioPos = double.MaxValue;
         }
 
+        // Reload the given file by first resetting the WebView (navigate to about:blank)
+        // and then loading the media host which will in turn initialize the player for the file.
+        public void Reload(string fileName)
+        {
+            if (string.IsNullOrWhiteSpace(fileName))
+                return;
+
+            // Ensure we have a CoreWebView2 instance
+            if (_videoView?.CoreWebView2 == null)
+            {
+                // Fallback to regular Load which will navigate to the host when ready
+                Load(fileName);
+                return;
+            }
+
+            // One-time handler to call Load after blank navigation completes
+            EventHandler<Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs>? oneTimeHandler = null;
+            oneTimeHandler = (object? sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs e) =>
+            {
+                try
+                {
+                    // detach
+                    _videoView.NavigationCompleted -= oneTimeHandler;
+
+                    // Now load the file using existing Load() which resets internal tracking
+                    Load(fileName);
+                }
+                catch
+                {
+                    // ignore
+                }
+            };
+
+            // Navigate to blank to reset the view, then the oneTimeHandler will call Load()
+            _videoView.NavigationCompleted += oneTimeHandler;
+            try
+            {
+                _videoView.CoreWebView2.Navigate("about:blank");
+            }
+            catch
+            {
+                // If navigation fails, fallback to Load
+                _videoView.NavigationCompleted -= oneTimeHandler;
+                Load(fileName);
+            }
+        }
+
         private void _videoView_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
         {
             // video host loaded - load the last requested file

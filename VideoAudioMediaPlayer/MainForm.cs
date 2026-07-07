@@ -192,6 +192,49 @@ namespace VideoAudioMediaPlayer
             WindowsInteropConnector.FocusAndForegroundForm(this);
         }
 
+        private void ReloadCurrentVideo()
+        {
+            if (InvokeRequired)
+            {
+                this.Invoke((MethodInvoker)delegate { ReloadCurrentVideo(); });
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(lastFile) || !File.Exists(lastFile))
+                return;
+
+            // Reset UI elements and internal state that depend on the currently loaded file
+            waveFormShown = false;
+            peakSeconds = null;
+
+            try
+            {
+                if (waveformPictureBox.Image != null)
+                {
+                    waveformPictureBox.Image.Dispose();
+                    waveformPictureBox.Image = null;
+                }
+            }
+            catch { }
+
+            // Recreate waveform handler to ensure internal buffers are cleared
+            _waveform_handler_reinit: ;
+            _waveformHandler = new WaveformHandler();
+
+            // Reset transcription tracking (will be reloaded)
+            transcriptionFragmentsStartTimes = new List<double>();
+            currentTranscriptionLineIndex = -1;
+
+            // Ensure video view is reset first, then load the file again
+            _mediaHandler.Reload(lastFile);
+
+            // Reload transcription for the file
+            LoadTranscriptionForVideo(lastFile);
+
+            // Bring window to front
+            WindowsInteropConnector.FocusAndForegroundForm(this);
+        }
+
         private void LoadTranscriptionForVideo(string videoFilePath)
         {
             if (transcriptionListBox.InvokeRequired)
@@ -355,6 +398,7 @@ namespace VideoAudioMediaPlayer
             {
                 Keys.OemQuestion => "?",
                 Keys.Space => " ",
+                Keys.F5 => "F5",
                 Keys.Enter => "Enter",
                 Keys.Add => "+",
                 Keys.Subtract => "-",
@@ -384,6 +428,10 @@ namespace VideoAudioMediaPlayer
                 case " ":
                 case "Enter":
                     _mediaHandler.PlayPause();
+                    break;
+
+                case "F5":
+                    ReloadCurrentVideo();
                     break;
 
                 case "+":
@@ -715,6 +763,7 @@ namespace VideoAudioMediaPlayer
             {
                 Keys.OemQuestion => "?",
                 Keys.Space => " ",
+                Keys.F5 => "F5",
                 Keys.Enter => "Enter",
                 Keys.Add => "+",
                 Keys.Subtract => "-",
